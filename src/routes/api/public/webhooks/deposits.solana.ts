@@ -106,7 +106,7 @@ export const Route = createFileRoute("/api/public/webhooks/deposits/solana")({
                   amount,
                   confirmations: 32,
                   status: "confirmed",
-                  raw: t as unknown as Record<string, unknown>,
+                  raw: t as never,
                 },
                 { onConflict: "chain,tx_hash,log_index" },
               )
