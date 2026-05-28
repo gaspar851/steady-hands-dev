@@ -20,6 +20,7 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated.
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated.admin.index'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated.admin.users'
 import { Route as AuthenticatedAdminKnowledgeRouteImport } from './routes/_authenticated.admin.knowledge'
+import { Route as AuthenticatedAdminDepositsRouteImport } from './routes/_authenticated.admin.deposits'
 import { Route as AuthenticatedAdminUserIdRouteImport } from './routes/_authenticated.admin.$userId'
 import { Route as ApiPublicWebhooksDepositsSolanaRouteImport } from './routes/api/public/webhooks/deposits.solana'
 import { Route as ApiPublicWebhooksDepositsEvmRouteImport } from './routes/api/public/webhooks/deposits.evm'
@@ -79,6 +80,12 @@ const AuthenticatedAdminKnowledgeRoute =
     path: '/knowledge',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminDepositsRoute =
+  AuthenticatedAdminDepositsRouteImport.update({
+    id: '/deposits',
+    path: '/deposits',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminUserIdRoute =
   AuthenticatedAdminUserIdRouteImport.update({
     id: '/$userId',
@@ -107,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/wallet': typeof AuthenticatedWalletRoute
   '/api/chat': typeof ApiChatRoute
   '/admin/$userId': typeof AuthenticatedAdminUserIdRoute
+  '/admin/deposits': typeof AuthenticatedAdminDepositsRoute
   '/admin/knowledge': typeof AuthenticatedAdminKnowledgeRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -121,6 +129,7 @@ export interface FileRoutesByTo {
   '/wallet': typeof AuthenticatedWalletRoute
   '/api/chat': typeof ApiChatRoute
   '/admin/$userId': typeof AuthenticatedAdminUserIdRoute
+  '/admin/deposits': typeof AuthenticatedAdminDepositsRoute
   '/admin/knowledge': typeof AuthenticatedAdminKnowledgeRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -138,6 +147,7 @@ export interface FileRoutesById {
   '/_authenticated/wallet': typeof AuthenticatedWalletRoute
   '/api/chat': typeof ApiChatRoute
   '/_authenticated/admin/$userId': typeof AuthenticatedAdminUserIdRoute
+  '/_authenticated/admin/deposits': typeof AuthenticatedAdminDepositsRoute
   '/_authenticated/admin/knowledge': typeof AuthenticatedAdminKnowledgeRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -155,6 +165,7 @@ export interface FileRouteTypes {
     | '/wallet'
     | '/api/chat'
     | '/admin/$userId'
+    | '/admin/deposits'
     | '/admin/knowledge'
     | '/admin/users'
     | '/admin/'
@@ -169,6 +180,7 @@ export interface FileRouteTypes {
     | '/wallet'
     | '/api/chat'
     | '/admin/$userId'
+    | '/admin/deposits'
     | '/admin/knowledge'
     | '/admin/users'
     | '/admin'
@@ -185,6 +197,7 @@ export interface FileRouteTypes {
     | '/_authenticated/wallet'
     | '/api/chat'
     | '/_authenticated/admin/$userId'
+    | '/_authenticated/admin/deposits'
     | '/_authenticated/admin/knowledge'
     | '/_authenticated/admin/users'
     | '/_authenticated/admin/'
@@ -281,6 +294,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminKnowledgeRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/deposits': {
+      id: '/_authenticated/admin/deposits'
+      path: '/deposits'
+      fullPath: '/admin/deposits'
+      preLoaderRoute: typeof AuthenticatedAdminDepositsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/$userId': {
       id: '/_authenticated/admin/$userId'
       path: '/$userId'
@@ -307,6 +327,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminUserIdRoute: typeof AuthenticatedAdminUserIdRoute
+  AuthenticatedAdminDepositsRoute: typeof AuthenticatedAdminDepositsRoute
   AuthenticatedAdminKnowledgeRoute: typeof AuthenticatedAdminKnowledgeRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
@@ -314,6 +335,7 @@ interface AuthenticatedAdminRouteChildren {
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminUserIdRoute: AuthenticatedAdminUserIdRoute,
+  AuthenticatedAdminDepositsRoute: AuthenticatedAdminDepositsRoute,
   AuthenticatedAdminKnowledgeRoute: AuthenticatedAdminKnowledgeRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,

@@ -33,12 +33,20 @@ function MasterDashboard() {
           <h1 className="text-xl font-semibold">Master dashboard</h1>
           <p className="text-sm text-muted-foreground">All strategies. Click a profile to manage their trades and balance.</p>
         </div>
-        <Link
-          to="/admin/knowledge"
-          className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-accent"
-        >
-          Manage AI Knowledge →
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            to="/admin/deposits"
+            className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-accent"
+          >
+            Deposits →
+          </Link>
+          <Link
+            to="/admin/knowledge"
+            className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-accent"
+          >
+            Manage AI Knowledge →
+          </Link>
+        </div>
       </div>
       {rows.length === 0 ? (
         <Card className="p-6 text-center text-sm text-muted-foreground">No users yet.</Card>
