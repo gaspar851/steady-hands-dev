@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { Logo } from "@/components/Logo";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+
 import { HelpChatWidget } from "@/components/chat/HelpChatWidget";
 
 export const Route = createFileRoute("/")({
@@ -65,7 +65,7 @@ function LandingPage() {
           </span>
         </Link>
         <div className="flex items-center gap-1 sm:gap-2">
-          <LanguageSwitcher />
+          
           <InstallAppButton />
           <a
             href="https://github.com"
