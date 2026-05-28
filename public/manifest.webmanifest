@@ -1,0 +1,14 @@
+{
+  "name": "Open Trader — Crypto Demo Trading",
+  "short_name": "OpenTrader",
+  "description": "Open-source crypto demo trading simulator.",
+  "start_url": "/trade",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b0f14",
+  "theme_color": "#0b0f14",
+  "icons": [
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
