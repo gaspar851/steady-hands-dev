@@ -44,36 +44,6 @@ export type Database = {
         }
         Relationships: []
       }
-      deposit_addresses: {
-        Row: {
-          address: string
-          address_lower: string | null
-          chain: string
-          created_at: string
-          derivation_index: number
-          id: string
-          user_id: string
-        }
-        Insert: {
-          address: string
-          address_lower?: string | null
-          chain: string
-          created_at?: string
-          derivation_index: number
-          id?: string
-          user_id: string
-        }
-        Update: {
-          address?: string
-          address_lower?: string | null
-          chain?: string
-          created_at?: string
-          derivation_index?: number
-          id?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       deposit_requests: {
         Row: {
           amount: number
@@ -132,71 +102,6 @@ export type Database = {
             columns: ["platform_wallet_id"]
             isOneToOne: false
             referencedRelation: "platform_wallets"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      deposits: {
-        Row: {
-          amount: number
-          chain: string
-          confirmations: number
-          created_at: string
-          credited_balance_event_id: string | null
-          from_address: string | null
-          id: string
-          log_index: number
-          raw: Json | null
-          status: string
-          to_address: string
-          token: string
-          token_contract: string | null
-          tx_hash: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          amount: number
-          chain: string
-          confirmations?: number
-          created_at?: string
-          credited_balance_event_id?: string | null
-          from_address?: string | null
-          id?: string
-          log_index?: number
-          raw?: Json | null
-          status?: string
-          to_address: string
-          token: string
-          token_contract?: string | null
-          tx_hash: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          amount?: number
-          chain?: string
-          confirmations?: number
-          created_at?: string
-          credited_balance_event_id?: string | null
-          from_address?: string | null
-          id?: string
-          log_index?: number
-          raw?: Json | null
-          status?: string
-          to_address?: string
-          token?: string
-          token_contract?: string | null
-          tx_hash?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "deposits_credited_balance_event_id_fkey"
-            columns: ["credited_balance_event_id"]
-            isOneToOne: false
-            referencedRelation: "balance_events"
             referencedColumns: ["id"]
           },
         ]
@@ -425,72 +330,6 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
-        }
-        Relationships: []
-      }
-      wallet_identities: {
-        Row: {
-          address: string
-          address_lower: string | null
-          chain: string
-          created_at: string
-          id: string
-          user_id: string
-          verified_at: string
-        }
-        Insert: {
-          address: string
-          address_lower?: string | null
-          chain: string
-          created_at?: string
-          id?: string
-          user_id: string
-          verified_at?: string
-        }
-        Update: {
-          address?: string
-          address_lower?: string | null
-          chain?: string
-          created_at?: string
-          id?: string
-          user_id?: string
-          verified_at?: string
-        }
-        Relationships: []
-      }
-      wallet_nonces: {
-        Row: {
-          address: string
-          address_lower: string | null
-          chain: string
-          created_at: string
-          expires_at: string
-          id: string
-          message: string
-          nonce: string
-          used_at: string | null
-        }
-        Insert: {
-          address: string
-          address_lower?: string | null
-          chain: string
-          created_at?: string
-          expires_at: string
-          id?: string
-          message: string
-          nonce: string
-          used_at?: string | null
-        }
-        Update: {
-          address?: string
-          address_lower?: string | null
-          chain?: string
-          created_at?: string
-          expires_at?: string
-          id?: string
-          message?: string
-          nonce?: string
-          used_at?: string | null
         }
         Relationships: []
       }
