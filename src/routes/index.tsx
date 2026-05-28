@@ -189,6 +189,10 @@ function LandingPage() {
         </div>
       </section>
 
+      <TrustSection />
+
+
+
       <footer className="relative z-10 border-t border-border/40 px-4 py-8 text-center text-xs text-muted-foreground">
         <div className="flex items-center justify-center gap-2">
           <Globe2 className="h-3.5 w-3.5" />
@@ -491,6 +495,77 @@ function TrustLogo({ icon: Icon, label }: { icon: any; label: string }) {
     </div>
   );
 }
+
+const EXCHANGES = [
+  "Binance", "Coinbase", "Kraken", "Bitstamp", "Bybit", "OKX",
+  "Bitfinex", "KuCoin", "Gate.io", "Crypto.com", "Gemini", "HTX",
+  "MEXC", "Bitget", "BingX", "Upbit",
+];
+
+function TrustSection() {
+  const { t } = useTranslation();
+  const doubled = [...EXCHANGES, ...EXCHANGES];
+  return (
+    <section className="relative z-10 mx-auto max-w-6xl px-4 pb-20">
+      <div className="mb-10 text-center">
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-primary">
+          <ShieldCheck className="h-3 w-3" /> {t("home.trust.eyebrow")}
+        </div>
+        <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+          {t("home.trust.title")}
+        </h2>
+        <p className="mx-auto mt-3 max-w-2xl text-sm text-muted-foreground">
+          {t("home.trust.subtitle")}
+        </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <AuditBadge icon={ShieldCheck} title={t("home.trust.audit_security_title")} firm={t("home.trust.audit_security_firm")} meta={t("home.trust.audit_security_meta")} />
+        <AuditBadge icon={FileCheck2} title={t("home.trust.audit_contract_title")} firm={t("home.trust.audit_contract_firm")} meta={t("home.trust.audit_contract_meta")} />
+        <AuditBadge icon={Lock} title={t("home.trust.audit_soc2_title")} firm={t("home.trust.audit_soc2_firm")} meta={t("home.trust.audit_soc2_meta")} />
+        <AuditBadge icon={BadgeCheck} title={t("home.trust.audit_mit_title")} firm={t("home.trust.audit_mit_firm")} meta={t("home.trust.audit_mit_meta")} />
+      </div>
+
+      <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 rounded-xl border border-border/60 bg-card/30 px-6 py-4 backdrop-blur-md">
+        <TrustLogo icon={Code2} label={t("home.trust.logo_open_source")} />
+        <TrustLogo icon={ShieldCheck} label={t("home.trust.logo_audited")} />
+        <TrustLogo icon={Lock} label={t("home.trust.logo_secured")} />
+        <TrustLogo icon={BadgeCheck} label={t("home.trust.logo_verified")} />
+        <TrustLogo icon={Users} label={t("home.trust.logo_community")} />
+        <TrustLogo icon={FileCheck2} label={t("home.trust.logo_transparent")} />
+      </div>
+
+      <div className="mt-6 overflow-hidden rounded-xl border border-border/60 bg-card/20 backdrop-blur-md">
+        <div className="border-b border-border/40 px-4 py-2 text-center text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+          <span className="mr-2 inline-flex h-2 w-2 rounded-full bg-primary align-middle shadow-[0_0_8px_var(--color-primary)]" />
+          {t("home.trust.feeds_label")}
+        </div>
+        <div className="relative overflow-hidden py-3">
+          <div
+            className="flex w-max gap-8 whitespace-nowrap will-change-transform"
+            style={{ animation: "scroll-x 45s linear infinite" }}
+          >
+            {doubled.map((ex, i) => (
+              <span key={i} className="font-mono text-xs uppercase tracking-wider text-muted-foreground/90">
+                {ex}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8 rounded-xl border border-border/60 bg-card/40 p-6 text-center backdrop-blur-md">
+        <div className="bg-gradient-to-r from-primary via-chart-3 to-chart-5 bg-clip-text text-4xl font-bold text-transparent sm:text-5xl">
+          {t("home.trust.contributors_value")}
+        </div>
+        <div className="mt-2 text-sm font-semibold">{t("home.trust.contributors_label")}</div>
+        <div className="mt-1 text-xs text-muted-foreground">{t("home.trust.contributors_caption")}</div>
+      </div>
+    </section>
+  );
+}
+
+
 
 function BackgroundFX() {
   return (

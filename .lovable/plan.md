@@ -1,23 +1,51 @@
-## Post-import smoke checks for OpenTrader
+## Home page updates
 
-I've already run a quick health pass and the app is in good shape — dev server is up, home page returns 200 with the correct `<title>Open Trader …</title>`, generated Supabase types include all imported tables (`profiles`, `trades`, `trade_comments`, `balance_events`, `knowledge_entries`, `user_roles`), `src/start.ts` has `attachSupabaseAuth` wired, `.env` is populated, and the AI help endpoint `POST /api/chat` streams a correct answer from the seeded knowledge base.
+Two scoped changes to `src/routes/index.tsx` and the i18n locale files.
 
-Two small follow-ups are worth doing in this pass:
+### 1. Headline word swap
 
-### 1. Run the full security linter and resolve findings
-The migration left one WARN — `has_role` is callable by `authenticated`. That's actually the documented pattern (it's the helper RLS policies call), so I'll review the linter output, document/dismiss it, and fix anything else that comes up.
+In the hero H1, replace "sandbox" → "protocol".
 
-### 2. Verify the auth-gated surfaces actually load end-to-end
-- Open the preview in the browser, sign up a fresh account (this becomes admin via the `handle_new_user` trigger).
-- Confirm the `/trade`, `/admin`, `/admin/users`, `/admin/knowledge` pages render without 401/500 (verifies the `requireSupabaseAuth` middleware + bearer-attacher chain end to end).
-- Confirm the floating Help chat widget on `/` works in the UI (network smoke test already passes).
-- Watch the server-function logs for any TS-types / RLS errors.
+- Update `home.h1_c` value in all 8 locale files (`en`, `es`, `fr`, `de`, `it`, `pt`, `ar`, `zh`) so the translated word for "sandbox" becomes the equivalent of "protocol".
+- No JSX change needed — the H1 already renders `t("home.h1_c")`.
 
-### 3. README mentions Google sign-in but the imported login/signup pages only use email+password
-- No `lovable.auth.signInWithOAuth` calls anywhere in `src/`.
-- I will NOT add Google sign-in unsolicited — flagging it so you can decide. If you want it, say the word and I'll add the broker call to `/login` + `/signup` and enable the Google provider.
+### 2. New "Trust & Transparency" section above the footer
 
-### Out of scope for this pass
-- Visual polish, new features, or refactors. This is strictly: import landed cleanly → it runs → no smoke-test surprises.
+Insert a new section between the Manifesto block and the `<footer>` in `src/routes/index.tsx`. Purpose: reinforce reliability with audit/security/openness signals.
 
-When you approve, I'll execute the three checks above and report findings (with fixes for anything broken). The Google sign-in item is a yes/no question for you, not something I'll touch unprompted.
+Contents (all i18n-keyed under `home.trust.*`):
+
+**Section heading**
+- Eyebrow: "Trust & Transparency"
+- Title: "Verified by the community, not a single company"
+- Subtitle: short line about open verification
+
+**Audit / certification badges** (grid of 4 cards, reuses existing `AuditBadge` component already defined in the file but currently unused)
+- Security Audit — "Trail of Bits style review" — `ShieldCheck`
+- Smart Contract Verified — "On-chain bytecode match" — `FileCheck2`
+- SOC 2 Aligned — "Controls & monitoring" — `Lock`
+- MIT Licensed — "Free forever" — `BadgeCheck`
+
+**Trust logos row** (small uppercase items, reuses existing `TrustLogo` component already defined)
+- Open-Source
+- Audited
+- Secured
+- Verified
+- Community-Built
+- Transparent Pricing
+
+**Price-feed transparency strip**
+- Line: "Prices aggregated from 15+ exchanges in real time"
+- Horizontal scrolling row of exchange name chips: Binance, Coinbase, Kraken, Bitstamp, Bybit, OKX, Bitfinex, KuCoin, Gate.io, Crypto.com, Gemini, HTX, MEXC, Bitget, BingX, Upbit. Uses the same `scroll-x` keyframe already in the file.
+
+**Contributor counter**
+- Large stat: "Built by thousands of contributors" with a small caption "Anyone can fork, audit, or improve the protocol."
+
+### Styling
+
+Reuses existing tokens and components — no new colors, no new keyframes. Cards use the same `border-border/60 bg-card/40 backdrop-blur-md` treatment as the Pillars section to stay consistent. All copy goes through `t(...)` and is added to every locale file.
+
+### Files touched
+
+- `src/routes/index.tsx` — swap nothing in JSX for the H1 change; add the new `<TrustSection />` (inline) before `<footer>`. The unused `AuditBadge` / `TrustLogo` / `ShieldCheck` / `Lock` / `FileCheck2` / `BadgeCheck` imports already in the file get used here.
+- `src/i18n/locales/{en,es,fr,de,it,pt,ar,zh}.json` — update `home.h1_c`; add `home.trust.*` keys.
