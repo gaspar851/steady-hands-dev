@@ -1,6 +1,6 @@
 # Open Trader
 
-A self-hosted paper-trading workspace and strategy journal. Log trades, track open positions, comment on entries, and review per-strategy P&L. Built on TanStack Start with a managed Postgres backend.
+A self-hosted trading workspace and strategy journal. Log trades, track open positions, comment on entries, and review per-strategy P&L. Built on TanStack Start with a managed Postgres backend.
 
 ## Features
 

@@ -36,7 +36,7 @@ export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
       { title: "Sign in — Open Trader" },
-      { name: "description", content: "Sign in to your Open Trader demo trading account." },
+      { name: "description", content: "Sign in to your Open Trader account." },
     ],
   }),
   component: LoginPage,
