@@ -14,12 +14,15 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as AuthenticatedWalletRouteImport } from './routes/_authenticated.wallet'
 import { Route as AuthenticatedTradeRouteImport } from './routes/_authenticated.trade'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated.admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated.admin.index'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated.admin.users'
 import { Route as AuthenticatedAdminKnowledgeRouteImport } from './routes/_authenticated.admin.knowledge'
 import { Route as AuthenticatedAdminUserIdRouteImport } from './routes/_authenticated.admin.$userId'
+import { Route as ApiPublicWebhooksDepositsSolanaRouteImport } from './routes/api/public/webhooks/deposits.solana'
+import { Route as ApiPublicWebhooksDepositsEvmRouteImport } from './routes/api/public/webhooks/deposits.evm'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -44,6 +47,11 @@ const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedWalletRoute = AuthenticatedWalletRouteImport.update({
+  id: '/wallet',
+  path: '/wallet',
+  getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedTradeRoute = AuthenticatedTradeRouteImport.update({
   id: '/trade',
@@ -77,6 +85,18 @@ const AuthenticatedAdminUserIdRoute =
     path: '/$userId',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const ApiPublicWebhooksDepositsSolanaRoute =
+  ApiPublicWebhooksDepositsSolanaRouteImport.update({
+    id: '/api/public/webhooks/deposits/solana',
+    path: '/api/public/webhooks/deposits/solana',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicWebhooksDepositsEvmRoute =
+  ApiPublicWebhooksDepositsEvmRouteImport.update({
+    id: '/api/public/webhooks/deposits/evm',
+    path: '/api/public/webhooks/deposits/evm',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -84,22 +104,28 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/trade': typeof AuthenticatedTradeRoute
+  '/wallet': typeof AuthenticatedWalletRoute
   '/api/chat': typeof ApiChatRoute
   '/admin/$userId': typeof AuthenticatedAdminUserIdRoute
   '/admin/knowledge': typeof AuthenticatedAdminKnowledgeRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/api/public/webhooks/deposits/evm': typeof ApiPublicWebhooksDepositsEvmRoute
+  '/api/public/webhooks/deposits/solana': typeof ApiPublicWebhooksDepositsSolanaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/trade': typeof AuthenticatedTradeRoute
+  '/wallet': typeof AuthenticatedWalletRoute
   '/api/chat': typeof ApiChatRoute
   '/admin/$userId': typeof AuthenticatedAdminUserIdRoute
   '/admin/knowledge': typeof AuthenticatedAdminKnowledgeRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
+  '/api/public/webhooks/deposits/evm': typeof ApiPublicWebhooksDepositsEvmRoute
+  '/api/public/webhooks/deposits/solana': typeof ApiPublicWebhooksDepositsSolanaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -109,11 +135,14 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/trade': typeof AuthenticatedTradeRoute
+  '/_authenticated/wallet': typeof AuthenticatedWalletRoute
   '/api/chat': typeof ApiChatRoute
   '/_authenticated/admin/$userId': typeof AuthenticatedAdminUserIdRoute
   '/_authenticated/admin/knowledge': typeof AuthenticatedAdminKnowledgeRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/api/public/webhooks/deposits/evm': typeof ApiPublicWebhooksDepositsEvmRoute
+  '/api/public/webhooks/deposits/solana': typeof ApiPublicWebhooksDepositsSolanaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -123,22 +152,28 @@ export interface FileRouteTypes {
     | '/signup'
     | '/admin'
     | '/trade'
+    | '/wallet'
     | '/api/chat'
     | '/admin/$userId'
     | '/admin/knowledge'
     | '/admin/users'
     | '/admin/'
+    | '/api/public/webhooks/deposits/evm'
+    | '/api/public/webhooks/deposits/solana'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
     | '/signup'
     | '/trade'
+    | '/wallet'
     | '/api/chat'
     | '/admin/$userId'
     | '/admin/knowledge'
     | '/admin/users'
     | '/admin'
+    | '/api/public/webhooks/deposits/evm'
+    | '/api/public/webhooks/deposits/solana'
   id:
     | '__root__'
     | '/'
@@ -147,11 +182,14 @@ export interface FileRouteTypes {
     | '/signup'
     | '/_authenticated/admin'
     | '/_authenticated/trade'
+    | '/_authenticated/wallet'
     | '/api/chat'
     | '/_authenticated/admin/$userId'
     | '/_authenticated/admin/knowledge'
     | '/_authenticated/admin/users'
     | '/_authenticated/admin/'
+    | '/api/public/webhooks/deposits/evm'
+    | '/api/public/webhooks/deposits/solana'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -160,6 +198,8 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiPublicWebhooksDepositsEvmRoute: typeof ApiPublicWebhooksDepositsEvmRoute
+  ApiPublicWebhooksDepositsSolanaRoute: typeof ApiPublicWebhooksDepositsSolanaRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -198,6 +238,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/chat'
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/wallet': {
+      id: '/_authenticated/wallet'
+      path: '/wallet'
+      fullPath: '/wallet'
+      preLoaderRoute: typeof AuthenticatedWalletRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/trade': {
       id: '/_authenticated/trade'
@@ -241,6 +288,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminUserIdRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/api/public/webhooks/deposits/solana': {
+      id: '/api/public/webhooks/deposits/solana'
+      path: '/api/public/webhooks/deposits/solana'
+      fullPath: '/api/public/webhooks/deposits/solana'
+      preLoaderRoute: typeof ApiPublicWebhooksDepositsSolanaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/webhooks/deposits/evm': {
+      id: '/api/public/webhooks/deposits/evm'
+      path: '/api/public/webhooks/deposits/evm'
+      fullPath: '/api/public/webhooks/deposits/evm'
+      preLoaderRoute: typeof ApiPublicWebhooksDepositsEvmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -264,11 +325,13 @@ const AuthenticatedAdminRouteWithChildren =
 interface AuthenticatedRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedTradeRoute: typeof AuthenticatedTradeRoute
+  AuthenticatedWalletRoute: typeof AuthenticatedWalletRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedTradeRoute: AuthenticatedTradeRoute,
+  AuthenticatedWalletRoute: AuthenticatedWalletRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
@@ -281,7 +344,19 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiPublicWebhooksDepositsEvmRoute: ApiPublicWebhooksDepositsEvmRoute,
+  ApiPublicWebhooksDepositsSolanaRoute: ApiPublicWebhooksDepositsSolanaRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
