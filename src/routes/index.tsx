@@ -173,27 +173,6 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* Manifesto */}
-      <section className="relative z-10 mx-auto max-w-4xl px-4 pb-20">
-        <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-card/40 p-8 backdrop-blur-xl sm:p-12">
-          <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/20 blur-3xl animate-pulse" />
-          <div className="absolute -bottom-24 -left-16 h-72 w-72 rounded-full bg-chart-5/15 blur-3xl" />
-          <div className="relative">
-            <div className="mb-4 flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-primary">
-              <Zap className="h-3.5 w-3.5" /> {t("home.manifesto_label")}
-            </div>
-            <p className="text-lg leading-relaxed sm:text-xl">
-              {t("home.manifesto_body")}
-            </p>
-            <div className="mt-6 flex flex-wrap gap-2 text-[11px] uppercase tracking-widest text-muted-foreground">
-              <Chip>{t("home.chip_self_hostable")}</Chip>
-              <Chip>{t("home.chip_permissionless")}</Chip>
-              <Chip>{t("home.chip_fork_friendly")}</Chip>
-              <Chip>{t("home.chip_composable")}</Chip>
-            </div>
-          </div>
-        </div>
-      </section>
 
       <AISignalsSection />
 
