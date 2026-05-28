@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyProfile } from "@/lib/profile.functions";
 import { Button } from "@/components/ui/button";
-import { LogOut, LayoutDashboard, LineChart, Users } from "lucide-react";
+import { LogOut, LayoutDashboard, LineChart, Users, Wallet } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { usd } from "@/lib/format";
 import { cn } from "@/lib/utils";
