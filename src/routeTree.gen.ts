@@ -22,8 +22,6 @@ import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminKnowledgeRouteImport } from './routes/_authenticated.admin.knowledge'
 import { Route as AuthenticatedAdminDepositsRouteImport } from './routes/_authenticated.admin.deposits'
 import { Route as AuthenticatedAdminUserIdRouteImport } from './routes/_authenticated.admin.$userId'
-import { Route as ApiPublicWebhooksDepositsSolanaRouteImport } from './routes/api/public/webhooks/deposits.solana'
-import { Route as ApiPublicWebhooksDepositsEvmRouteImport } from './routes/api/public/webhooks/deposits.evm'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -92,18 +90,6 @@ const AuthenticatedAdminUserIdRoute =
     path: '/$userId',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
-const ApiPublicWebhooksDepositsSolanaRoute =
-  ApiPublicWebhooksDepositsSolanaRouteImport.update({
-    id: '/api/public/webhooks/deposits/solana',
-    path: '/api/public/webhooks/deposits/solana',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicWebhooksDepositsEvmRoute =
-  ApiPublicWebhooksDepositsEvmRouteImport.update({
-    id: '/api/public/webhooks/deposits/evm',
-    path: '/api/public/webhooks/deposits/evm',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -118,8 +104,6 @@ export interface FileRoutesByFullPath {
   '/admin/knowledge': typeof AuthenticatedAdminKnowledgeRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
-  '/api/public/webhooks/deposits/evm': typeof ApiPublicWebhooksDepositsEvmRoute
-  '/api/public/webhooks/deposits/solana': typeof ApiPublicWebhooksDepositsSolanaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -133,8 +117,6 @@ export interface FileRoutesByTo {
   '/admin/knowledge': typeof AuthenticatedAdminKnowledgeRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
-  '/api/public/webhooks/deposits/evm': typeof ApiPublicWebhooksDepositsEvmRoute
-  '/api/public/webhooks/deposits/solana': typeof ApiPublicWebhooksDepositsSolanaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -151,8 +133,6 @@ export interface FileRoutesById {
   '/_authenticated/admin/knowledge': typeof AuthenticatedAdminKnowledgeRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
-  '/api/public/webhooks/deposits/evm': typeof ApiPublicWebhooksDepositsEvmRoute
-  '/api/public/webhooks/deposits/solana': typeof ApiPublicWebhooksDepositsSolanaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -169,8 +149,6 @@ export interface FileRouteTypes {
     | '/admin/knowledge'
     | '/admin/users'
     | '/admin/'
-    | '/api/public/webhooks/deposits/evm'
-    | '/api/public/webhooks/deposits/solana'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -184,8 +162,6 @@ export interface FileRouteTypes {
     | '/admin/knowledge'
     | '/admin/users'
     | '/admin'
-    | '/api/public/webhooks/deposits/evm'
-    | '/api/public/webhooks/deposits/solana'
   id:
     | '__root__'
     | '/'
@@ -201,8 +177,6 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/knowledge'
     | '/_authenticated/admin/users'
     | '/_authenticated/admin/'
-    | '/api/public/webhooks/deposits/evm'
-    | '/api/public/webhooks/deposits/solana'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -211,8 +185,6 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
   ApiChatRoute: typeof ApiChatRoute
-  ApiPublicWebhooksDepositsEvmRoute: typeof ApiPublicWebhooksDepositsEvmRoute
-  ApiPublicWebhooksDepositsSolanaRoute: typeof ApiPublicWebhooksDepositsSolanaRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -308,20 +280,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminUserIdRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
-    '/api/public/webhooks/deposits/solana': {
-      id: '/api/public/webhooks/deposits/solana'
-      path: '/api/public/webhooks/deposits/solana'
-      fullPath: '/api/public/webhooks/deposits/solana'
-      preLoaderRoute: typeof ApiPublicWebhooksDepositsSolanaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/webhooks/deposits/evm': {
-      id: '/api/public/webhooks/deposits/evm'
-      path: '/api/public/webhooks/deposits/evm'
-      fullPath: '/api/public/webhooks/deposits/evm'
-      preLoaderRoute: typeof ApiPublicWebhooksDepositsEvmRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -366,9 +324,17 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
   ApiChatRoute: ApiChatRoute,
-  ApiPublicWebhooksDepositsEvmRoute: ApiPublicWebhooksDepositsEvmRoute,
-  ApiPublicWebhooksDepositsSolanaRoute: ApiPublicWebhooksDepositsSolanaRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
