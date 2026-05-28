@@ -146,11 +146,6 @@ function LandingPage() {
 
       {/* Pillars */}
       <section className="relative z-10 mx-auto max-w-6xl px-4 pb-16">
-        <div className="mb-8 text-center">
-          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            {t("home.principles_heading")}
-          </h2>
-        </div>
         <div className="grid gap-4 sm:grid-cols-3">
           <Pillar
             icon={GitBranch}
