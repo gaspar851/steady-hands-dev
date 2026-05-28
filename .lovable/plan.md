@@ -1,32 +1,81 @@
-## Take over OpenTrader development
+# Plan: AI Help Chatbox on Home Page
 
-The uploaded `OpenTrader-main.zip` is a complete TanStack Start app (Open Trader — a self-hosted paper-trading workspace with admin dashboard, trade log, balance events, AI help chat, etc.) built on the same template as this workspace. The current project is still the blank Lovable starter. To "take over development" I'll import the uploaded codebase on top of the current scaffold so we can continue building from where it left off.
+A floating chat bubble (bottom-right) on `/` that answers visitor questions about Open Trader. Backed by Lovable AI Gateway. Knowledge lives in a `knowledge_entries` DB table you can edit from a new admin page — no code redeploy needed to update what the AI knows. Conversation persists in the visitor's browser (localStorage).
 
-### Steps
+## What gets built
 
-1. **Extract & sanity-check the archive**
-   - Unzip `user-uploads://OpenTrader-main.zip` to a temp dir.
-   - Verify no `.git` directory is present (never copy git metadata into the project).
+### 1. Knowledge base (database)
+New table `public.knowledge_entries`:
+- `title` (text) — short label, e.g. "What is Open Trader?"
+- `content` (text) — full answer/context the AI uses
+- `category` (text, optional) — e.g. "features", "fees", "getting-started"
+- `is_active` (boolean) — toggle entries on/off without deleting
+- standard id/timestamps + `updated_by`
 
-2. **Replace project source with OpenTrader**
-   - Sync the extracted tree into `/dev-server/` using `rsync -a --exclude='.git' --exclude='.git/**' --exclude='node_modules' --exclude='bun.lock'`.
-   - Overwrites: `src/`, `public/`, `supabase/`, `package.json`, `vite.config.ts`, `tsconfig.json`, `components.json`, `wrangler.jsonc`, `.lovable/plan.md`, `README.md`, etc.
-   - Keeps the current `.git` and Lovable infra intact.
+RLS:
+- Anyone (anon + authenticated) can SELECT active entries (the chat needs to read them; no PII here)
+- Only admins can INSERT/UPDATE/DELETE
 
-3. **Install dependencies**
-   - Run `bun install` so the new `package.json` (TanStack Start, AI SDK, Radix, etc.) is fully resolved.
+### 2. Admin UI to manage knowledge
+New page at `/admin/knowledge` (inside the existing `_authenticated.admin` gate):
+- Table of all entries with title, category, active toggle
+- Create / Edit / Delete dialogs
+- Linked from the existing admin nav alongside Users
 
-4. **Enable Lovable Cloud + apply database schema**
-   - The app requires Postgres (profiles, user_roles, trades, balance_events, knowledge_entries, RLS policies, `handle_new_user` trigger, etc.).
-   - Enable Lovable Cloud, then apply the SQL under `supabase/` as migrations (tables, GRANTs, RLS, trigger that promotes the first signup to admin).
+### 3. AI chat endpoint
+New TanStack server route `src/routes/api/chat.ts`:
+- POST receives `UIMessage[]` from the client
+- Loads all active knowledge entries from DB and injects them into the system prompt
+- Streams a response via Lovable AI Gateway (`google/gemini-3-flash-preview`) using AI SDK `streamText` → `toUIMessageStreamResponse`
+- Handles 429 (rate limit) and 402 (credits) with clear errors
 
-5. **Verify**
-   - Confirm build succeeds, dev server boots, and `/` renders the OpenTrader landing page (not the blank placeholder).
-   - Confirm `LOVABLE_API_KEY` secret is present for the AI help chat endpoint (add if missing).
+### 4. Floating chat widget on home page
+New component `HelpChatWidget`:
+- Bottom-right floating bubble button (chat icon)
+- Click expands a panel (~380×520px) with header, scrollable transcript, prompt input
+- Built on AI Elements (`conversation`, `message`, `prompt-input`, `shimmer`)
+- Uses `useChat` with `DefaultChatTransport({ api: "/api/chat" })`
+- Conversation persisted in `localStorage` under a single key; "Clear chat" button resets it
+- Custom small logo/avatar for the assistant (not the generic Sparkles)
+- Mounted only on `src/routes/index.tsx`
 
-### What I will NOT do in this step
-- No new features. The pending plan in `.lovable/plan.md` (AI Help Chatbox) appears already implemented in the uploaded source — I'll just import it as-is and we can iterate after.
-- No edits to logic/UI beyond what's needed to make the imported project build and run.
+### 5. Initial knowledge seed
+Seed ~6–10 starter entries covering: what Open Trader is, demo balance, supported markets, leverage/fees, how to start, that it's a sandbox (not real money), open-source nature.
 
-### After import
-Once the app is running, tell me what you want to work on next (bugs, new features, polish) and I'll continue from there.
+## Technical details
+
+- AI SDK packages: `ai`, `@ai-sdk/react`, `@ai-sdk/openai-compatible` (install if missing)
+- AI Elements installed via `bunx ai-elements@latest add conversation message prompt-input shimmer`
+- Gateway helper at `src/lib/ai-gateway.server.ts` reading `LOVABLE_API_KEY` from `process.env` inside the handler only
+- `LOVABLE_API_KEY` is already provisioned (verified in secrets list)
+- System prompt template:
+  ```
+  You are the Open Trader assistant. Answer questions about the platform using ONLY the knowledge below. If unsure, say so and suggest signing up to explore.
+
+  KNOWLEDGE BASE:
+  {{entries formatted as: ## title\n content}}
+  ```
+- Client never sees the system prompt or API key
+- Chat widget hidden on mobile narrower than 360px (avoid covering CTAs)
+- No auth required to use the chat (it's on the public landing page)
+
+## Files
+
+New:
+- `supabase` migration: `knowledge_entries` table + GRANTs + RLS
+- `src/lib/ai-gateway.server.ts` — Lovable AI provider helper
+- `src/lib/knowledge.functions.ts` — server fns: list/create/update/delete entries
+- `src/routes/api/chat.ts` — streaming chat endpoint
+- `src/routes/_authenticated.admin.knowledge.tsx` — admin knowledge manager
+- `src/components/chat/HelpChatWidget.tsx` — floating widget
+- `src/components/ai-elements/*` — installed AI Elements primitives
+
+Modified:
+- `src/routes/index.tsx` — mount `<HelpChatWidget />`
+- `src/routes/_authenticated.admin.users.tsx` (or admin index) — add nav link to Knowledge
+
+## Out of scope (can add later)
+- Per-user chat history in DB
+- File/URL ingestion or embeddings/RAG (current setup stuffs all active entries into the system prompt — fine for dozens of entries; if it grows past ~50 we'd switch to embeddings)
+- Voice / attachments
+- Streaming markdown citations linking back to specific knowledge entries
