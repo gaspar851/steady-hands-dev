@@ -189,6 +189,10 @@ function LandingPage() {
         </div>
       </section>
 
+      <TrustSection />
+
+
+
       <footer className="relative z-10 border-t border-border/40 px-4 py-8 text-center text-xs text-muted-foreground">
         <div className="flex items-center justify-center gap-2">
           <Globe2 className="h-3.5 w-3.5" />
