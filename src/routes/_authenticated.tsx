@@ -101,6 +101,18 @@ function AuthenticatedLayout() {
           )}
         </nav>
         <div className="ml-auto flex items-center gap-3">
+          <Link
+            to="/wallet"
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs transition",
+              pathname.startsWith("/wallet")
+                ? "bg-primary/15 text-primary"
+                : "border border-primary/40 bg-primary/10 text-primary hover:bg-primary/20",
+            )}
+          >
+            <Wallet className="h-3.5 w-3.5" />
+            Deposit Funds
+          </Link>
           {data && (
             <div className="hidden text-right md:block">
               <div className="text-xs font-medium">{data.profile.full_name || data.profile.email}</div>
