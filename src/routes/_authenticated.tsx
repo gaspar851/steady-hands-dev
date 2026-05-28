@@ -10,7 +10,7 @@ import { Logo } from "@/components/Logo";
 import { usd } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+
 
 
 export const Route = createFileRoute("/_authenticated")({
@@ -108,7 +108,7 @@ function AuthenticatedLayout() {
             </div>
           )}
           {isAdmin && <span className="rounded-md border border-primary/40 bg-primary/10 px-1.5 py-0.5 text-[10px] uppercase text-primary">{t("nav.admin_badge")}</span>}
-          <LanguageSwitcher />
+          
           <Button variant="ghost" size="sm" onClick={signOut} aria-label={t("common.sign_out")}><LogOut className="h-3.5 w-3.5" /></Button>
         </div>
       </header>
