@@ -10,7 +10,7 @@ export const Route = createFileRoute("/_authenticated/trade")({
   head: () => ({
     meta: [
       { title: "Trade — Open Trader" },
-      { name: "description", content: "Your demo trading workspace." },
+      { name: "description", content: "Your trading workspace." },
     ],
   }),
   component: TradePage,

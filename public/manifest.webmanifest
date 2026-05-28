@@ -1,7 +1,7 @@
 {
-  "name": "Open Trader — Crypto Demo Trading",
+  "name": "Open Trader — Crypto Trading Protocol",
   "short_name": "OpenTrader",
-  "description": "Open-source crypto demo trading simulator.",
+  "description": "Open-source, community-built crypto trading protocol with live markets.",
   "start_url": "/trade",
   "scope": "/",
   "display": "standalone",

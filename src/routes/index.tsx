@@ -32,16 +32,16 @@ export const Route = createFileRoute("/")({
   },
   head: () => ({
     meta: [
-      { title: "Open Trader — Open-Source, Decentralised Trading Sandbox" },
+      { title: "Open Trader — Open-Source, Decentralised Trading Protocol" },
       {
         name: "description",
         content:
-          "Open Trader is an open-source, community-driven, decentralised demo trading platform. Live market data, transparent code, forkable by design.",
+          "Open Trader is an open-source, community-driven, decentralised trading protocol. Live market data, transparent code, forkable by design.",
       },
-      { property: "og:title", content: "Open Trader — Open-Source Trading Sandbox" },
+      { property: "og:title", content: "Open Trader — Open-Source Trading Protocol" },
       {
         property: "og:description",
-        content: "Open-source. Decentralised. Community-driven. Trade with zero risk.",
+        content: "Open-source. Decentralised. Community-driven. Built by traders, for traders.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

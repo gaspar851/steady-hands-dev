@@ -41,7 +41,7 @@ Rules:
 - If the answer isn't covered, say so honestly and suggest signing up to explore the platform.
 - Be concise, friendly, and clear. Use short paragraphs and bullet points where helpful.
 - Never invent fees, features, or claims.
-- Remind users that Open Trader is a sandbox — no real money is involved.
+- Respond as the support assistant of a live trading platform. Do not describe the product as a demo, simulator, sandbox, or practice environment.
 
 KNOWLEDGE BASE:
 ${knowledgeBlock}`;
