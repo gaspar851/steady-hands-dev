@@ -1,59 +1,169 @@
-## Remove demo/simulation language across the app
+# Wallet sign-in + on-chain USDT deposits
 
-Make the product read as a real trading platform everywhere. Scope is copy/metadata only — no business-logic changes (balances, fees, fills still work the same).
+Adds "Connect Wallet" to the login/signup page (MetaMask, Trust, Rainbow, Coinbase, WalletConnect, Phantom, Solflare, Backpack) alongside existing email + Google, AND wires a real USDT deposit flow that credits the in-app balance.
 
-### 1. Hero subtitle + SEO metadata
+## 1. What infrastructure is needed (overview)
 
-- `src/routes/index.tsx`
-  - `head().meta`: drop "Sandbox" / "demo trading platform" from title, description, og:title, og:description. New title: `Open Trader — Open-Source, Decentralised Trading Protocol`. Description rewritten without "demo"/"zero risk" framing.
-  - Twitter description: same rewrite (remove "zero risk").
-- `src/routes/__root.tsx` (lines 68–75): replace all 6 "Crypto Demo Trading" / "demo trading simulator" strings with neutral real-trading copy (e.g. `Open Trader — Open-Source Trading Protocol`, `Open-source, community-built trading protocol with live markets`).
-- `src/routes/login.tsx` line 39: drop "demo".
-- `src/routes/_authenticated.trade.tsx` line 13: drop "demo".
-- `public/manifest.webmanifest`: name and description rewritten without "Demo" / "simulator".
+```text
+                ┌──────────────────────────────┐
+   Browser  ──▶ │  Wallet UI (Reown AppKit)    │  EVM + Solana adapters
+                └──────────────┬───────────────┘
+                               │ signed SIWE / SIWS message
+                               ▼
+              ┌────────────────────────────────────┐
+              │  TanStack server fns (/api side)   │
+              │  - issue nonce                     │
+              │  - verify signature                │
+              │  - find/create Supabase user       │
+              │  - mint Supabase session           │
+              └─────────────┬──────────────────────┘
+                            │
+                ┌───────────┴────────────┐
+                ▼                        ▼
+       Supabase Auth (admin)     Postgres (profiles,
+       creates/looks up user      wallet_identities,
+       returns access+refresh     deposit_addresses,
+       tokens to browser          deposits, nonces)
+                                          ▲
+                                          │ credits on confirmed transfer
+                ┌─────────────────────────┴─────────┐
+                │  Deposit watcher (server route)   │
+                │  /api/public/webhooks/deposits    │
+                │  Alchemy (EVM) + Helius (Solana)  │
+                │  webhooks → verify sig → insert    │
+                │  deposit + balance_event          │
+                └───────────────────────────────────┘
+```
 
-### 2. Landing page i18n strings (`src/i18n/locales/en.json`)
+### Pieces to add
 
-- `home.manifesto_body`: replace "practice, fail, learn and ship strategies" with copy that reads as professional trading ("execute, iterate, and refine strategies …"), no "practice" framing.
-- `home.footer_tagline`: keep "Not financial advice." (this is a legal disclaimer required for any trading UI, real or otherwise — removing it is a liability issue, not a realism issue). Confirm with user only if they want it gone too.
+**Frontend**
+- Reown AppKit (formerly WalletConnect Web3Modal) — one modal that handles MetaMask, Trust, Rainbow, Coinbase, plus mobile via WalletConnect, plus Phantom/Solflare/Backpack on Solana. Avoids gluing wagmi + @solana/wallet-adapter together by hand.
+- A `<ConnectWallet />` button on `/login` and `/signup`.
+- A `/wallet` page (deposit address + QR + history) on the authenticated side.
+- A "Linked wallets" section in profile so a logged-in user can attach a wallet to an existing email account.
 
-### 3. AI help assistant (`src/routes/api/chat.ts`)
+**Backend (TanStack server fns + one public webhook route)**
+- `getNonce` — issues a one-time nonce keyed by `address + chain`.
+- `verifyWalletSignature` — verifies SIWE (EVM, `viem.verifyMessage`) or SIWS (Solana, `tweetnacl.sign.detached.verify`), finds-or-creates the Supabase user via the admin client, returns access + refresh tokens that the browser hands to `supabase.auth.setSession`.
+- `linkWalletToCurrentUser` — same verify path, but attaches the wallet to the signed-in user instead of creating a new one.
+- `getOrCreateDepositAddress` — per-user, per-chain HD-derived deposit address (one EVM address, one Solana address).
+- `/api/public/webhooks/deposits/evm` and `/api/public/webhooks/deposits/solana` — signed webhooks from Alchemy / Helius that record confirmed USDT transfers and credit `balance_events`.
 
-- Remove the system-prompt line: `- Remind users that Open Trader is a sandbox — no real money is involved.`
-- Replace with neutral guidance: respond as a real trading platform's support assistant; never describe trades as simulated.
+**Database (new tables + columns)**
+- `wallet_identities` — `(user_id, chain, address, verified_at)`, unique on `(chain, lower(address))`. Multiple wallets per user, one user per wallet.
+- `wallet_nonces` — `(address, chain, nonce, expires_at)`. TTL 5 min.
+- `deposit_addresses` — `(user_id, chain, address, derivation_index)`, unique on `(chain, address)`.
+- `deposits` — `(id, user_id, chain, tx_hash, from_address, to_address, token, amount, confirmations, status, credited_balance_event_id)`, unique on `(chain, tx_hash, log_index)`.
+- `profiles` — already exists; no schema change required for login (we key wallet identity by `wallet_identities.user_id`).
 
-### 4. Knowledge base entries (Postgres, used by AI chat)
+**Secrets (request via `add_secret`)**
+- `REOWN_PROJECT_ID` — Reown/WalletConnect project id (public, but conventionally stored as a secret so it stays out of git history). Exposed to the browser via `VITE_REOWN_PROJECT_ID`.
+- `ALCHEMY_API_KEY` + `ALCHEMY_WEBHOOK_SIGNING_KEY` — EVM USDT transfer notifications.
+- `HELIUS_API_KEY` + `HELIUS_WEBHOOK_SECRET` — Solana USDT (SPL) transfer notifications.
+- `WALLET_HD_SEED` — 24-word seed (encrypted at rest in Supabase secrets) used to derive per-user deposit addresses. Server-only, never read in the browser.
+- `WALLET_NETWORK` — `mainnet` or `testnet` (Sepolia + Solana devnet for first ship).
 
-Three entries currently broadcast "demo / simulated / no real money" — these are the loudest source of the demo feel because the AI quotes them. Rewrite via a migration:
+**External services**
+- Reown Cloud project (free) — wallet connection.
+- Alchemy or Infura webhook for ERC-20 Transfer events on the USDT contract → our address pool.
+- Helius webhook for SPL Token transfers on the USDT mint → our address pool.
 
-- **"What is Open Trader?"** → "Open Trader is an open-source, community-driven, decentralised trading protocol. It provides live market data and lets you execute trades against real-time prices from 15+ exchanges."
-- **"Demo balance"** → rename to **"Starting balance"**. Content: "Every new account starts with a 10,000 USDT balance. Admins can adjust your balance for special scenarios. All balance changes are recorded in your Transactions history."
-- **"Is this real money?"** → either delete this entry, or replace its title with something like **"Account funds"** and rewrite content to drop the "sandbox / simulated" wording. Recommend **delete** so the AI never gets prompted on the question.
+## 2. Sign-in flow
 
-### 5. UI labels to audit and rename
+```text
+1. User clicks Connect Wallet → Reown modal → picks wallet → wallet connects.
+2. Browser calls getNonce({ address, chain }) → server returns { nonce, message }
+   where message is a SIWE (EVM) or SIWS (Solana) string including the nonce,
+   domain, issued-at, and a 5-min expiry.
+3. Wallet signs the message.
+4. Browser calls verifyWalletSignature({ address, chain, signature, message }).
+   Server:
+     a. Verifies signature (viem / tweetnacl) and that nonce matches + isn't expired.
+     b. Looks up wallet_identities. If found → that user_id. If not:
+        - Creates a Supabase auth user via supabaseAdmin.auth.admin.createUser
+          with a synthetic email "<chain>:<address>@wallet.opentrader.local"
+          (never used for login, only as a Supabase Auth primary key).
+        - Inserts profile row (handle_new_user trigger already does this).
+        - Inserts wallet_identities row.
+     c. Generates a session for that user via
+        supabaseAdmin.auth.admin.generateLink({ type: 'magiclink', email })
+        and exchanges the token to get { access_token, refresh_token }.
+     d. Marks nonce as used.
+5. Browser calls supabase.auth.setSession({ access_token, refresh_token }).
+   Existing onAuthStateChange listener fires, router invalidates, user lands
+   on /trade exactly like an email or Google sign-in.
+```
 
-- The Trade workspace's `Balance / Change / Open / Realized` labels stay as-is (already neutral).
-- No "Demo" / "Simulator" / "Practice" badges, banners, or watermarks exist in components — confirmed via ripgrep.
-- The unrelated "Demote" admin button (`_authenticated.admin.users.tsx`, `_authenticated.admin.$userId.tsx`) is a substring false-positive — left untouched.
+## 3. Deposit flow
 
-### 6. README
+```text
+1. User opens /wallet. Page calls getOrCreateDepositAddress for each chain.
+   - Server derives a new address from WALLET_HD_SEED at index = next free
+     derivation_index, stores it in deposit_addresses, returns address + QR.
+   - Same user always gets the same two addresses on repeat visits.
+2. User sends USDT (ERC-20 on Ethereum, SPL on Solana) from their wallet.
+3. Alchemy/Helius detects the Transfer event whose `to` is in our address pool
+   and POSTs a signed webhook to /api/public/webhooks/deposits/{chain}.
+4. Webhook handler:
+     a. Verifies HMAC signature against the provider's signing secret.
+     b. Resolves to_address → user_id via deposit_addresses.
+     c. Upserts deposits row (idempotent on (chain, tx_hash, log_index)).
+     d. Once status = confirmed (≥ N confirmations), inserts a
+        balance_events row { type: 'deposit', amount, note: '<chain> tx ...' }
+        and updates profiles.balance via the existing admin-only RPC pattern.
+5. /wallet page subscribes to the deposits table via Supabase realtime so
+   "Pending → Confirmed → Credited" updates without refresh.
+```
 
-- `README.md` line 3: replace "A self-hosted paper-trading workspace and strategy journal" with "A self-hosted trading workspace and strategy journal." Remove paper-trading framing throughout.
+Withdrawals are explicitly out of scope for this milestone — they require a hot wallet, key custody, gas/SOL float, and a separate compliance review. Add an "Coming soon" placeholder on /wallet for now.
 
-### Files touched
+## 4. Files to add / change
 
-- `src/routes/index.tsx`
-- `src/routes/__root.tsx`
-- `src/routes/login.tsx`
-- `src/routes/_authenticated.trade.tsx`
-- `src/routes/api/chat.ts`
-- `src/i18n/locales/en.json`
-- `public/manifest.webmanifest`
-- `README.md`
-- new migration: `supabase/migrations/<ts>_neutralize_knowledge.sql` (UPDATE the 2 entries, DELETE the "Is this real money?" entry)
+**New**
+- `src/integrations/wallet/appkit.ts` — Reown AppKit init (EVM + Solana adapters, project id).
+- `src/components/auth/ConnectWalletButton.tsx` — modal trigger + sign-in flow.
+- `src/components/wallet/DepositPanel.tsx` — addresses, QR, history.
+- `src/lib/wallet.functions.ts` — `getNonce`, `verifyWalletSignature`, `linkWalletToCurrentUser`, `getOrCreateDepositAddress`.
+- `src/lib/wallet.server.ts` — server-only helpers: SIWE/SIWS verification, HD derivation, Supabase admin user creation, session minting.
+- `src/routes/_authenticated.wallet.tsx` — Wallet page.
+- `src/routes/api/public/webhooks/deposits.evm.ts` — Alchemy webhook handler.
+- `src/routes/api/public/webhooks/deposits.solana.ts` — Helius webhook handler.
 
-### Out of scope (ask before changing)
+**Changed**
+- `src/routes/login.tsx`, `src/routes/signup.tsx` — add ConnectWalletButton.
+- `src/routes/_authenticated.tsx` — add nav entry for Wallet.
+- Knowledge base — replace the current "Funding your account" entry with one that mentions wallet sign-in and USDT deposits (EVM + Solana) so the chatbot reflects reality.
 
-- Removing the `"Not financial advice."` disclaimer.
-- Changing the starting balance amount or any economic mechanic.
-- Touching the Trade workspace's column headers or order ticket labels (already read as real trading).
+**Database migration**
+- Create `wallet_identities`, `wallet_nonces`, `deposit_addresses`, `deposits` with full GRANTs + RLS:
+  - `wallet_identities`: user can SELECT own rows; INSERT/DELETE only via server fn (no anon/auth grants beyond SELECT own).
+  - `deposit_addresses`: user can SELECT own rows; admin/service_role only writes.
+  - `deposits`: user can SELECT own rows; service_role only writes (webhook).
+  - `wallet_nonces`: service_role only.
+
+## 5. Packages to install
+
+- `@reown/appkit`, `@reown/appkit-adapter-wagmi`, `@reown/appkit-adapter-solana`
+- `wagmi`, `viem`
+- `@solana/web3.js`, `@solana/spl-token`
+- `tweetnacl`, `bs58` (Solana signature verification)
+- `siwe` (EVM message construction + nonce helpers)
+- `ethers` is NOT needed — viem covers verification.
+
+All are Worker-compatible (pure JS / WASM, no native bindings).
+
+## 6. Open decisions before build (will ask inline)
+
+1. Mainnet or testnet for first ship? Recommend Sepolia (EVM) + Solana devnet so we can end-to-end test deposits without real funds, then flip `WALLET_NETWORK` later.
+2. Minimum confirmations before credit? Default: 12 on EVM, 32 slots on Solana.
+3. Should existing email accounts be auto-linked if a wallet sign-in happens to match a known address in `profiles`? Default: no — require explicit linking from settings.
+4. Custodial deposit pool address vs HD-derived per-user addresses? Plan defaults to per-user HD derivation (cleaner attribution, no need to parse memos). Custodial single-address + memo is simpler but Solana memos and EVM `data` fields complicate wallet UX.
+
+## 7. What this is NOT (explicit scope guards)
+
+- No on-chain trading. Trades stay off-chain against the existing balance.
+- No withdrawals in this milestone.
+- No token other than USDT (USDC can be added later by extending the contract/mint allowlist).
+- No removal of email or Google sign-in.
+- No change to the `trades` table or the trade execution path.
