@@ -19,6 +19,12 @@ import {
   Lock,
   FileCheck2,
   BadgeCheck,
+  Brain,
+  Cpu,
+  Activity,
+  TrendingUp,
+  Radar,
+  Waves,
 } from "lucide-react";
 import { InstallAppButton } from "@/components/InstallAppButton";
 import { Logo } from "@/components/Logo";
