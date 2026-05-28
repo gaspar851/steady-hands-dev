@@ -726,8 +726,23 @@ function NeuralOrb() {
 }
 
 function BackgroundFX() {
+  const [pos, setPos] = useState({ x: 50, y: 30 });
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      setPos({ x: (e.clientX / window.innerWidth) * 100, y: (e.clientY / window.innerHeight) * 100 });
+    };
+    window.addEventListener("mousemove", onMove);
+    return () => window.removeEventListener("mousemove", onMove);
+  }, []);
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      {/* mouse spotlight */}
+      <div
+        className="absolute inset-0 transition-[background] duration-300"
+        style={{
+          background: `radial-gradient(600px circle at ${pos.x}% ${pos.y}%, color-mix(in oklab, var(--color-primary) 14%, transparent), transparent 60%)`,
+        }}
+      />
       {/* grid */}
       <div
         className="absolute inset-0 opacity-[0.18]"
