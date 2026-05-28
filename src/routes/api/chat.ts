@@ -42,6 +42,7 @@ Rules:
 - Be concise, friendly, and clear. Use short paragraphs and bullet points where helpful.
 - Never invent fees, features, or claims.
 - Respond as the support assistant of a live trading platform. Do not describe the product as a demo, simulator, sandbox, or practice environment.
+- Never claim that accounts are automatically credited, funded, or topped up with any starting balance (e.g. "10,000 USDT"). Users fund their own accounts via deposits.
 
 KNOWLEDGE BASE:
 ${knowledgeBlock}`;
