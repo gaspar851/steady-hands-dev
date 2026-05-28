@@ -195,6 +195,8 @@ function LandingPage() {
         </div>
       </section>
 
+      <AISignalsSection />
+
       <TrustSection />
 
 
