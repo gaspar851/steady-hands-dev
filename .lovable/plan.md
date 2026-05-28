@@ -1,169 +1,108 @@
-# Wallet sign-in + on-chain USDT deposits
+## Goal
 
-Adds "Connect Wallet" to the login/signup page (MetaMask, Trust, Rainbow, Coinbase, WalletConnect, Phantom, Solflare, Backpack) alongside existing email + Google, AND wires a real USDT deposit flow that credits the in-app balance.
+Replace the HD-wallet + webhook plumbing with a simple, admin-curated deposit flow:
 
-## 1. What infrastructure is needed (overview)
+1. Admin pre-loads a small set of platform-owned addresses (one per coin/network).
+2. User clicks **Generate my wallet**, picks coin + network, sees the address + QR + memo.
+3. User sends funds, then submits a **deposit request** with the tx hash + optional screenshot.
+4. A trusted assistant verifies on-chain, approves, and the balance is credited automatically via `balance_events`.
 
-```text
-                ┌──────────────────────────────┐
-   Browser  ──▶ │  Wallet UI (Reown AppKit)    │  EVM + Solana adapters
-                └──────────────┬───────────────┘
-                               │ signed SIWE / SIWS message
-                               ▼
-              ┌────────────────────────────────────┐
-              │  TanStack server fns (/api side)   │
-              │  - issue nonce                     │
-              │  - verify signature                │
-              │  - find/create Supabase user       │
-              │  - mint Supabase session           │
-              └─────────────┬──────────────────────┘
-                            │
-                ┌───────────┴────────────┐
-                ▼                        ▼
-       Supabase Auth (admin)     Postgres (profiles,
-       creates/looks up user      wallet_identities,
-       returns access+refresh     deposit_addresses,
-       tokens to browser          deposits, nonces)
-                                          ▲
-                                          │ credits on confirmed transfer
-                ┌─────────────────────────┴─────────┐
-                │  Deposit watcher (server route)   │
-                │  /api/public/webhooks/deposits    │
-                │  Alchemy (EVM) + Helius (Solana)  │
-                │  webhooks → verify sig → insert    │
-                │  deposit + balance_event          │
-                └───────────────────────────────────┘
-```
+Wallet sign-in (Reown / MetaMask / Phantom) stays — only the **on-chain deposit pipeline** is being simplified. Email + Google + Wallet logins all funnel into the same deposit flow.
 
-### Pieces to add
+## Supported coins/networks (admin-editable)
 
-**Frontend**
-- Reown AppKit (formerly WalletConnect Web3Modal) — one modal that handles MetaMask, Trust, Rainbow, Coinbase, plus mobile via WalletConnect, plus Phantom/Solflare/Backpack on Solana. Avoids gluing wagmi + @solana/wallet-adapter together by hand.
-- A `<ConnectWallet />` button on `/login` and `/signup`.
-- A `/wallet` page (deposit address + QR + history) on the authenticated side.
-- A "Linked wallets" section in profile so a logged-in user can attach a wallet to an existing email account.
+| Coin | Network | Notes |
+|---|---|---|
+| BTC | Bitcoin | |
+| ETH | Ethereum (ERC-20) | |
+| USDT | Ethereum (ERC-20) | |
+| USDT | Tron (TRC-20) | low fees, very common |
+| USDT | Solana (SPL) | |
+| SOL | Solana | |
 
-**Backend (TanStack server fns + one public webhook route)**
-- `getNonce` — issues a one-time nonce keyed by `address + chain`.
-- `verifyWalletSignature` — verifies SIWE (EVM, `viem.verifyMessage`) or SIWS (Solana, `tweetnacl.sign.detached.verify`), finds-or-creates the Supabase user via the admin client, returns access + refresh tokens that the browser hands to `supabase.auth.setSession`.
-- `linkWalletToCurrentUser` — same verify path, but attaches the wallet to the signed-in user instead of creating a new one.
-- `getOrCreateDepositAddress` — per-user, per-chain HD-derived deposit address (one EVM address, one Solana address).
-- `/api/public/webhooks/deposits/evm` and `/api/public/webhooks/deposits/solana` — signed webhooks from Alchemy / Helius that record confirmed USDT transfers and credit `balance_events`.
+Admin can add/disable rows later — UI is driven by the table, not hard-coded.
 
-**Database (new tables + columns)**
-- `wallet_identities` — `(user_id, chain, address, verified_at)`, unique on `(chain, lower(address))`. Multiple wallets per user, one user per wallet.
-- `wallet_nonces` — `(address, chain, nonce, expires_at)`. TTL 5 min.
-- `deposit_addresses` — `(user_id, chain, address, derivation_index)`, unique on `(chain, address)`.
-- `deposits` — `(id, user_id, chain, tx_hash, from_address, to_address, token, amount, confirmations, status, credited_balance_event_id)`, unique on `(chain, tx_hash, log_index)`.
-- `profiles` — already exists; no schema change required for login (we key wallet identity by `wallet_identities.user_id`).
+## Database changes
 
-**Secrets (request via `add_secret`)**
-- `REOWN_PROJECT_ID` — Reown/WalletConnect project id (public, but conventionally stored as a secret so it stays out of git history). Exposed to the browser via `VITE_REOWN_PROJECT_ID`.
-- `ALCHEMY_API_KEY` + `ALCHEMY_WEBHOOK_SIGNING_KEY` — EVM USDT transfer notifications.
-- `HELIUS_API_KEY` + `HELIUS_WEBHOOK_SECRET` — Solana USDT (SPL) transfer notifications.
-- `WALLET_HD_SEED` — 24-word seed (encrypted at rest in Supabase secrets) used to derive per-user deposit addresses. Server-only, never read in the browser.
-- `WALLET_NETWORK` — `mainnet` or `testnet` (Sepolia + Solana devnet for first ship).
+**Drop / abandon** (no longer needed): `wallet_nonces` keeps working (used for wallet login), but `deposit_addresses` and `deposits` from the previous plan are replaced.
 
-**External services**
-- Reown Cloud project (free) — wallet connection.
-- Alchemy or Infura webhook for ERC-20 Transfer events on the USDT contract → our address pool.
-- Helius webhook for SPL Token transfers on the USDT mint → our address pool.
+**New tables:**
 
-## 2. Sign-in flow
+- `platform_wallets` — admin-managed list of receive addresses
+  - `id`, `coin` (BTC/ETH/USDT/SOL), `network` (bitcoin/ethereum/tron/solana), `address`, `memo` (optional, for chains that need it), `qr_image_url` (optional, uploaded by admin), `is_active`, `notes`, `created_at`, `updated_at`
+  - Unique on `(coin, network)` while `is_active = true`
+  - RLS: anyone authenticated can SELECT active rows; only admins INSERT/UPDATE/DELETE
 
-```text
-1. User clicks Connect Wallet → Reown modal → picks wallet → wallet connects.
-2. Browser calls getNonce({ address, chain }) → server returns { nonce, message }
-   where message is a SIWE (EVM) or SIWS (Solana) string including the nonce,
-   domain, issued-at, and a 5-min expiry.
-3. Wallet signs the message.
-4. Browser calls verifyWalletSignature({ address, chain, signature, message }).
-   Server:
-     a. Verifies signature (viem / tweetnacl) and that nonce matches + isn't expired.
-     b. Looks up wallet_identities. If found → that user_id. If not:
-        - Creates a Supabase auth user via supabaseAdmin.auth.admin.createUser
-          with a synthetic email "<chain>:<address>@wallet.opentrader.local"
-          (never used for login, only as a Supabase Auth primary key).
-        - Inserts profile row (handle_new_user trigger already does this).
-        - Inserts wallet_identities row.
-     c. Generates a session for that user via
-        supabaseAdmin.auth.admin.generateLink({ type: 'magiclink', email })
-        and exchanges the token to get { access_token, refresh_token }.
-     d. Marks nonce as used.
-5. Browser calls supabase.auth.setSession({ access_token, refresh_token }).
-   Existing onAuthStateChange listener fires, router invalidates, user lands
-   on /trade exactly like an email or Google sign-in.
-```
+- `deposit_requests` — user-submitted proofs awaiting verification
+  - `id`, `user_id`, `platform_wallet_id`, `coin`, `network`, `amount` (user-claimed), `tx_hash`, `from_address` (optional), `proof_image_url` (optional), `status` (`pending` / `approved` / `rejected`), `reviewer_id`, `reviewer_note`, `credited_balance_event_id`, `created_at`, `reviewed_at`
+  - RLS: users SELECT/INSERT their own; admins SELECT/UPDATE all; nobody DELETE
 
-## 3. Deposit flow
+- Storage bucket `deposit-proofs` — private, signed URLs, users upload only under `{user_id}/...`
 
-```text
-1. User opens /wallet. Page calls getOrCreateDepositAddress for each chain.
-   - Server derives a new address from WALLET_HD_SEED at index = next free
-     derivation_index, stores it in deposit_addresses, returns address + QR.
-   - Same user always gets the same two addresses on repeat visits.
-2. User sends USDT (ERC-20 on Ethereum, SPL on Solana) from their wallet.
-3. Alchemy/Helius detects the Transfer event whose `to` is in our address pool
-   and POSTs a signed webhook to /api/public/webhooks/deposits/{chain}.
-4. Webhook handler:
-     a. Verifies HMAC signature against the provider's signing secret.
-     b. Resolves to_address → user_id via deposit_addresses.
-     c. Upserts deposits row (idempotent on (chain, tx_hash, log_index)).
-     d. Once status = confirmed (≥ N confirmations), inserts a
-        balance_events row { type: 'deposit', amount, note: '<chain> tx ...' }
-        and updates profiles.balance via the existing admin-only RPC pattern.
-5. /wallet page subscribes to the deposits table via Supabase realtime so
-   "Pending → Confirmed → Credited" updates without refresh.
-```
+**Trigger:** when a `deposit_requests` row flips to `status = 'approved'`, insert a `balance_events` row (`type = 'deposit'`, `amount = <claimed amount>`, `actor_id = reviewer_id`, `note = 'Deposit <coin>/<network> tx <hash>'`) and update `profiles.balance` via the existing admin-only path. Store the resulting `balance_events.id` on the request.
 
-Withdrawals are explicitly out of scope for this milestone — they require a hot wallet, key custody, gas/SOL float, and a separate compliance review. Add an "Coming soon" placeholder on /wallet for now.
+## UI changes
 
-## 4. Files to add / change
+**`/wallet` page** (replace existing `DepositPanel`):
 
-**New**
-- `src/integrations/wallet/appkit.ts` — Reown AppKit init (EVM + Solana adapters, project id).
-- `src/components/auth/ConnectWalletButton.tsx` — modal trigger + sign-in flow.
-- `src/components/wallet/DepositPanel.tsx` — addresses, QR, history.
-- `src/lib/wallet.functions.ts` — `getNonce`, `verifyWalletSignature`, `linkWalletToCurrentUser`, `getOrCreateDepositAddress`.
-- `src/lib/wallet.server.ts` — server-only helpers: SIWE/SIWS verification, HD derivation, Supabase admin user creation, session minting.
-- `src/routes/_authenticated.wallet.tsx` — Wallet page.
-- `src/routes/api/public/webhooks/deposits.evm.ts` — Alchemy webhook handler.
-- `src/routes/api/public/webhooks/deposits.solana.ts` — Helius webhook handler.
+- Two-step picker: **Coin → Network**, both required.
+- "Generate my wallet" button reveals the address card: address, copyable, QR (generated client-side from address), memo if present, minimum confirmations notice, and a clear warning ("Send only `{COIN}` on the `{NETWORK}` network. Other tokens will be lost.").
+- Below: **Submit deposit proof** form — amount, tx hash (validated by chain-specific regex), optional from-address, optional screenshot upload (≤5 MB, image/* only).
+- **My deposits** table: status pills, timestamps, reviewer note when rejected.
 
-**Changed**
-- `src/routes/login.tsx`, `src/routes/signup.tsx` — add ConnectWalletButton.
-- `src/routes/_authenticated.tsx` — add nav entry for Wallet.
-- Knowledge base — replace the current "Funding your account" entry with one that mentions wallet sign-in and USDT deposits (EVM + Solana) so the chatbot reflects reality.
+**`/admin/deposits` page** (new, gated by `has_role('admin')`):
 
-**Database migration**
-- Create `wallet_identities`, `wallet_nonces`, `deposit_addresses`, `deposits` with full GRANTs + RLS:
-  - `wallet_identities`: user can SELECT own rows; INSERT/DELETE only via server fn (no anon/auth grants beyond SELECT own).
-  - `deposit_addresses`: user can SELECT own rows; admin/service_role only writes.
-  - `deposits`: user can SELECT own rows; service_role only writes (webhook).
-  - `wallet_nonces`: service_role only.
+- Tab 1 — **Requests**: pending queue with user email, claimed amount, tx hash (linkified to the right explorer), proof image preview, **Approve** / **Reject** with note. Approve writes the `balance_events` row.
+- Tab 2 — **Wallets**: CRUD for `platform_wallets` — add/edit address, memo, upload QR, toggle active.
 
-## 5. Packages to install
+**`/admin` nav**: add "Deposits" link.
 
-- `@reown/appkit`, `@reown/appkit-adapter-wagmi`, `@reown/appkit-adapter-solana`
-- `wagmi`, `viem`
-- `@solana/web3.js`, `@solana/spl-token`
-- `tweetnacl`, `bs58` (Solana signature verification)
-- `siwe` (EVM message construction + nonce helpers)
-- `ethers` is NOT needed — viem covers verification.
+## Server functions (TanStack `createServerFn`)
 
-All are Worker-compatible (pure JS / WASM, no native bindings).
+- `listActivePlatformWallets()` — public to authenticated users.
+- `createDepositRequest({ platform_wallet_id, amount, tx_hash, from_address?, proof_image_path? })` — Zod-validated, inserts row, returns it.
+- `listMyDepositRequests()` — user's own history.
+- `adminListDepositRequests({ status? })` — admin-only.
+- `adminReviewDepositRequest({ id, action: 'approve' | 'reject', note? })` — admin-only; on approve, inserts `balance_events` + updates `profiles.balance`, links the event id back to the request.
+- `adminUpsertPlatformWallet(...)` / `adminDeletePlatformWallet(...)` — admin-only.
 
-## 6. Open decisions before build (will ask inline)
+All admin fns use `requireSupabaseAuth` + `has_role` check inside the handler.
 
-1. Mainnet or testnet for first ship? Recommend Sepolia (EVM) + Solana devnet so we can end-to-end test deposits without real funds, then flip `WALLET_NETWORK` later.
-2. Minimum confirmations before credit? Default: 12 on EVM, 32 slots on Solana.
-3. Should existing email accounts be auto-linked if a wallet sign-in happens to match a known address in `profiles`? Default: no — require explicit linking from settings.
-4. Custodial deposit pool address vs HD-derived per-user addresses? Plan defaults to per-user HD derivation (cleaner attribution, no need to parse memos). Custodial single-address + memo is simpler but Solana memos and EVM `data` fields complicate wallet UX.
+## Code removed / shrunk
 
-## 7. What this is NOT (explicit scope guards)
+- Delete `src/routes/api/public/webhooks/deposits.evm.ts` and `deposits.solana.ts` (no chain watcher needed).
+- Shrink `src/lib/wallet.server.ts`: keep SIWE/SIWS sign-in helpers, drop HD-derivation code (`@scure/bip32`, `ed25519-hd-key`).
+- Drop env vars `WALLET_HD_SEED`, `WALLET_NETWORK`, `ALCHEMY_WEBHOOK_SECRET`, `HELIUS_WEBHOOK_SECRET` — not needed.
+- Reown wallet sign-in button + provider stay as a third login option.
 
-- No on-chain trading. Trades stay off-chain against the existing balance.
-- No withdrawals in this milestone.
-- No token other than USDT (USDC can be added later by extending the contract/mint allowlist).
-- No removal of email or Google sign-in.
-- No change to the `trades` table or the trade execution path.
+## Files to add / change
+
+**Add**
+- `supabase/migrations/<ts>_deposits_manual_flow.sql` — tables, RLS, GRANTs, storage bucket + policies, trigger.
+- `src/lib/deposits.functions.ts` — server fns above.
+- `src/components/wallet/WalletPicker.tsx`, `DepositAddressCard.tsx`, `DepositProofForm.tsx`, `MyDepositsTable.tsx`.
+- `src/routes/_authenticated/admin.deposits.tsx` — admin queue + wallets CRUD.
+
+**Change**
+- `src/routes/_authenticated.wallet.tsx` — use new components, drop HD address fetch.
+- `src/components/admin/AdminNav.tsx` — add Deposits link.
+- Knowledge base entry for the new flow.
+
+**Delete**
+- `src/routes/api/public/webhooks/deposits.evm.ts`
+- `src/routes/api/public/webhooks/deposits.solana.ts`
+- HD-derivation code in `src/lib/wallet.server.ts`.
+
+## Admin onboarding (you, after we ship)
+
+1. Open `/admin/deposits → Wallets`.
+2. For each row, paste the address from your real BTC / ETH / TRON / Solana wallet and (optionally) upload a custom QR image.
+3. Toggle active. Users immediately see those addresses.
+
+## Out of scope
+
+- Withdrawals (separate flow, can plan next).
+- Automatic on-chain verification (would re-introduce Alchemy/Helius — explicitly deferred).
+- Multi-currency conversion: the user's claimed amount is what gets credited as USDT-equivalent **after** the reviewer confirms the on-chain value matches. Reviewer can edit the amount before approving.
+
+Approve this and I'll switch to build mode and ship it.

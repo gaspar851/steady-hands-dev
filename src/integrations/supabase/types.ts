@@ -74,6 +74,68 @@ export type Database = {
         }
         Relationships: []
       }
+      deposit_requests: {
+        Row: {
+          amount: number
+          coin: string
+          created_at: string
+          credited_balance_event_id: string | null
+          from_address: string | null
+          id: string
+          network: string
+          platform_wallet_id: string
+          proof_image_url: string | null
+          reviewed_at: string | null
+          reviewer_id: string | null
+          reviewer_note: string | null
+          status: string
+          tx_hash: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          coin: string
+          created_at?: string
+          credited_balance_event_id?: string | null
+          from_address?: string | null
+          id?: string
+          network: string
+          platform_wallet_id: string
+          proof_image_url?: string | null
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          reviewer_note?: string | null
+          status?: string
+          tx_hash: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          coin?: string
+          created_at?: string
+          credited_balance_event_id?: string | null
+          from_address?: string | null
+          id?: string
+          network?: string
+          platform_wallet_id?: string
+          proof_image_url?: string | null
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          reviewer_note?: string | null
+          status?: string
+          tx_hash?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deposit_requests_platform_wallet_id_fkey"
+            columns: ["platform_wallet_id"]
+            isOneToOne: false
+            referencedRelation: "platform_wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deposits: {
         Row: {
           amount: number
@@ -169,6 +231,45 @@ export type Database = {
           title?: string
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      platform_wallets: {
+        Row: {
+          address: string
+          coin: string
+          created_at: string
+          id: string
+          is_active: boolean
+          memo: string | null
+          network: string
+          notes: string | null
+          qr_image_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          coin: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          memo?: string | null
+          network: string
+          notes?: string | null
+          qr_image_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          coin?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          memo?: string | null
+          network?: string
+          notes?: string | null
+          qr_image_url?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
