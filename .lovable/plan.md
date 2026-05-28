@@ -1,81 +1,23 @@
-# Plan: AI Help Chatbox on Home Page
+## Post-import smoke checks for OpenTrader
 
-A floating chat bubble (bottom-right) on `/` that answers visitor questions about Open Trader. Backed by Lovable AI Gateway. Knowledge lives in a `knowledge_entries` DB table you can edit from a new admin page — no code redeploy needed to update what the AI knows. Conversation persists in the visitor's browser (localStorage).
+I've already run a quick health pass and the app is in good shape — dev server is up, home page returns 200 with the correct `<title>Open Trader …</title>`, generated Supabase types include all imported tables (`profiles`, `trades`, `trade_comments`, `balance_events`, `knowledge_entries`, `user_roles`), `src/start.ts` has `attachSupabaseAuth` wired, `.env` is populated, and the AI help endpoint `POST /api/chat` streams a correct answer from the seeded knowledge base.
 
-## What gets built
+Two small follow-ups are worth doing in this pass:
 
-### 1. Knowledge base (database)
-New table `public.knowledge_entries`:
-- `title` (text) — short label, e.g. "What is Open Trader?"
-- `content` (text) — full answer/context the AI uses
-- `category` (text, optional) — e.g. "features", "fees", "getting-started"
-- `is_active` (boolean) — toggle entries on/off without deleting
-- standard id/timestamps + `updated_by`
+### 1. Run the full security linter and resolve findings
+The migration left one WARN — `has_role` is callable by `authenticated`. That's actually the documented pattern (it's the helper RLS policies call), so I'll review the linter output, document/dismiss it, and fix anything else that comes up.
 
-RLS:
-- Anyone (anon + authenticated) can SELECT active entries (the chat needs to read them; no PII here)
-- Only admins can INSERT/UPDATE/DELETE
+### 2. Verify the auth-gated surfaces actually load end-to-end
+- Open the preview in the browser, sign up a fresh account (this becomes admin via the `handle_new_user` trigger).
+- Confirm the `/trade`, `/admin`, `/admin/users`, `/admin/knowledge` pages render without 401/500 (verifies the `requireSupabaseAuth` middleware + bearer-attacher chain end to end).
+- Confirm the floating Help chat widget on `/` works in the UI (network smoke test already passes).
+- Watch the server-function logs for any TS-types / RLS errors.
 
-### 2. Admin UI to manage knowledge
-New page at `/admin/knowledge` (inside the existing `_authenticated.admin` gate):
-- Table of all entries with title, category, active toggle
-- Create / Edit / Delete dialogs
-- Linked from the existing admin nav alongside Users
+### 3. README mentions Google sign-in but the imported login/signup pages only use email+password
+- No `lovable.auth.signInWithOAuth` calls anywhere in `src/`.
+- I will NOT add Google sign-in unsolicited — flagging it so you can decide. If you want it, say the word and I'll add the broker call to `/login` + `/signup` and enable the Google provider.
 
-### 3. AI chat endpoint
-New TanStack server route `src/routes/api/chat.ts`:
-- POST receives `UIMessage[]` from the client
-- Loads all active knowledge entries from DB and injects them into the system prompt
-- Streams a response via Lovable AI Gateway (`google/gemini-3-flash-preview`) using AI SDK `streamText` → `toUIMessageStreamResponse`
-- Handles 429 (rate limit) and 402 (credits) with clear errors
+### Out of scope for this pass
+- Visual polish, new features, or refactors. This is strictly: import landed cleanly → it runs → no smoke-test surprises.
 
-### 4. Floating chat widget on home page
-New component `HelpChatWidget`:
-- Bottom-right floating bubble button (chat icon)
-- Click expands a panel (~380×520px) with header, scrollable transcript, prompt input
-- Built on AI Elements (`conversation`, `message`, `prompt-input`, `shimmer`)
-- Uses `useChat` with `DefaultChatTransport({ api: "/api/chat" })`
-- Conversation persisted in `localStorage` under a single key; "Clear chat" button resets it
-- Custom small logo/avatar for the assistant (not the generic Sparkles)
-- Mounted only on `src/routes/index.tsx`
-
-### 5. Initial knowledge seed
-Seed ~6–10 starter entries covering: what Open Trader is, demo balance, supported markets, leverage/fees, how to start, that it's a sandbox (not real money), open-source nature.
-
-## Technical details
-
-- AI SDK packages: `ai`, `@ai-sdk/react`, `@ai-sdk/openai-compatible` (install if missing)
-- AI Elements installed via `bunx ai-elements@latest add conversation message prompt-input shimmer`
-- Gateway helper at `src/lib/ai-gateway.server.ts` reading `LOVABLE_API_KEY` from `process.env` inside the handler only
-- `LOVABLE_API_KEY` is already provisioned (verified in secrets list)
-- System prompt template:
-  ```
-  You are the Open Trader assistant. Answer questions about the platform using ONLY the knowledge below. If unsure, say so and suggest signing up to explore.
-
-  KNOWLEDGE BASE:
-  {{entries formatted as: ## title\n content}}
-  ```
-- Client never sees the system prompt or API key
-- Chat widget hidden on mobile narrower than 360px (avoid covering CTAs)
-- No auth required to use the chat (it's on the public landing page)
-
-## Files
-
-New:
-- `supabase` migration: `knowledge_entries` table + GRANTs + RLS
-- `src/lib/ai-gateway.server.ts` — Lovable AI provider helper
-- `src/lib/knowledge.functions.ts` — server fns: list/create/update/delete entries
-- `src/routes/api/chat.ts` — streaming chat endpoint
-- `src/routes/_authenticated.admin.knowledge.tsx` — admin knowledge manager
-- `src/components/chat/HelpChatWidget.tsx` — floating widget
-- `src/components/ai-elements/*` — installed AI Elements primitives
-
-Modified:
-- `src/routes/index.tsx` — mount `<HelpChatWidget />`
-- `src/routes/_authenticated.admin.users.tsx` (or admin index) — add nav link to Knowledge
-
-## Out of scope (can add later)
-- Per-user chat history in DB
-- File/URL ingestion or embeddings/RAG (current setup stuffs all active entries into the system prompt — fine for dozens of entries; if it grows past ~50 we'd switch to embeddings)
-- Voice / attachments
-- Streaming markdown citations linking back to specific knowledge entries
+When you approve, I'll execute the three checks above and report findings (with fixes for anything broken). The Google sign-in item is a yes/no question for you, not something I'll touch unprompted.
