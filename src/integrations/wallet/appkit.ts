@@ -28,6 +28,9 @@ const solanaNetworks = (useMainnet ? [solana] : [solanaDevnet]) as [
   typeof solana | typeof solanaDevnet,
 ];
 
+export const wagmiAdapter = new WagmiAdapter({
+  projectId: projectId ?? "",
+  networks: evmNetworks as never,
   ssr: false,
 });
 

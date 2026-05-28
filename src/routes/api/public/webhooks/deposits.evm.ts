@@ -106,7 +106,7 @@ export const Route = createFileRoute("/api/public/webhooks/deposits/evm")({
                 amount,
                 confirmations: MIN_CONFIRMATIONS,
                 status,
-                raw: a as unknown as Record<string, unknown>,
+                raw: a as never,
               },
               { onConflict: "chain,tx_hash,log_index" },
             )
