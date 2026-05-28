@@ -20,10 +20,10 @@ export function ConnectWalletButton({ redirectTo = "/trade" }: { redirectTo?: st
   const navigate = useNavigate();
   const { open } = useAppKit();
   const account = useAppKitAccount();
-  const evmProvider = useAppKitProvider<{
+  const { walletProvider: evmProvider } = useAppKitProvider<{
     request: (args: { method: string; params: unknown[] }) => Promise<unknown>;
   }>("eip155");
-  const solProvider = useAppKitProvider<{
+  const { walletProvider: solProvider } = useAppKitProvider<{
     signMessage: (msg: Uint8Array) => Promise<{ signature: Uint8Array } | Uint8Array>;
   }>("solana");
   const fetchNonce = useServerFn(getWalletNonce);
