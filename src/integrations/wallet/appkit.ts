@@ -21,12 +21,13 @@ const projectId = import.meta.env.VITE_REOWN_PROJECT_ID as string | undefined;
 // env var. Keeps preview/dev safe.
 const useMainnet = import.meta.env.VITE_WALLET_NETWORK === "mainnet";
 
-const evmNetworks = useMainnet ? [mainnet] : [sepolia];
-const solanaNetworks = useMainnet ? [solana] : [solanaDevnet];
+const evmNetworks = (useMainnet ? [mainnet] : [sepolia]) as [
+  typeof mainnet | typeof sepolia,
+];
+const solanaNetworks = (useMainnet ? [solana] : [solanaDevnet]) as [
+  typeof solana | typeof solanaDevnet,
+];
 
-export const wagmiAdapter = new WagmiAdapter({
-  networks: evmNetworks,
-  projectId: projectId ?? "missing-reown-project-id",
   ssr: false,
 });
 
@@ -43,7 +44,7 @@ export function initAppKit() {
   }
   createAppKit({
     adapters: [wagmiAdapter, solanaAdapter],
-    networks: [...evmNetworks, ...solanaNetworks],
+    networks: [...evmNetworks, ...solanaNetworks] as never,
     projectId,
     metadata: {
       name: "Open Trader",
