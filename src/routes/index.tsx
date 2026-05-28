@@ -269,7 +269,7 @@ function LiveChartPanel() {
     (async () => {
       try {
         const res = await fetch(
-          "https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=60",
+          "https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1s&limit=120",
         );
         const raw: any[] = await res.json();
         if (!alive) return;
@@ -279,7 +279,7 @@ function LiveChartPanel() {
       } catch {}
 
       if (!alive) return;
-      ws = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@kline_1m");
+      ws = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@kline_1s");
       ws.onmessage = (ev) => {
         try {
           const msg = JSON.parse(ev.data);
@@ -346,7 +346,7 @@ function LiveChartPanel() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
               </span>
-              BTC/USDT · live · 1m
+              BTC/USDT · live · 1s
             </div>
           </div>
         </div>
