@@ -170,7 +170,7 @@ export const adminReviewDepositRequest = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     await requireAdmin(supabase, userId);
 
-    const patch: Record<string, unknown> = {
+    const patch: { status: "approved" | "rejected"; reviewer_note: string | null; amount?: number } = {
       status: data.action === "approve" ? "approved" : "rejected",
       reviewer_note: data.note ?? null,
     };
