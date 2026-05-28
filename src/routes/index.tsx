@@ -575,6 +575,156 @@ function TrustSection() {
 
 
 
+function AISignalsSection() {
+  const signals = [
+    { icon: Brain, label: "Pattern recognition", text: "BTC/USDT forming bullish flag · confidence 78%", tone: "pos" as const },
+    { icon: Radar, label: "Anomaly scan", text: "Unusual ETH whale outflow detected — 12.4K ETH", tone: "neg" as const },
+    { icon: Activity, label: "Momentum", text: "SOL RSI crossing 70 · 4h trend strengthening", tone: "pos" as const },
+    { icon: Waves, label: "Volatility", text: "Implied vol compressing on majors — breakout watch", tone: "neu" as const },
+    { icon: TrendingUp, label: "Flow analysis", text: "Net spot inflow $42M last hour · accumulation", tone: "pos" as const },
+    { icon: Cpu, label: "Model update", text: "On-chain sentiment vector refreshed · 2.1M samples", tone: "neu" as const },
+  ];
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setIdx((i) => (i + 1) % signals.length), 2200);
+    return () => clearInterval(id);
+  }, [signals.length]);
+
+  return (
+    <section className="relative z-10 mx-auto max-w-6xl px-4 pb-20">
+      <div className="mb-10 text-center">
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-primary">
+          <Brain className="h-3 w-3 animate-pulse" /> AI Co-pilot
+        </div>
+        <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+          Markets, decoded in{" "}
+          <span className="bg-gradient-to-r from-primary via-chart-3 to-chart-5 bg-clip-text text-transparent">real time</span>
+        </h2>
+        <p className="mx-auto mt-3 max-w-2xl text-sm text-muted-foreground">
+          A transparent intelligence layer that watches order flow, on-chain signals and news velocity — and ships every insight you see straight to your dashboard.
+        </p>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-5">
+        {/* Live signal stream */}
+        <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/40 p-5 backdrop-blur-xl lg:col-span-3">
+          <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-semibold">
+              <span className="relative inline-flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+              </span>
+              Signal stream · live
+            </div>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">model v0.4 · open</span>
+          </div>
+          <ul className="space-y-2">
+            {signals.map((s, i) => {
+              const active = i === idx;
+              const Icon = s.icon;
+              return (
+                <li
+                  key={i}
+                  className={
+                    "flex items-center gap-3 rounded-lg border px-3 py-2 transition-all duration-500 " +
+                    (active
+                      ? "border-primary/50 bg-primary/5 shadow-[0_0_30px_-10px_var(--color-primary)]"
+                      : "border-border/40 bg-background/20 opacity-70")
+                  }
+                >
+                  <div
+                    className={
+                      "flex h-7 w-7 shrink-0 items-center justify-center rounded-md ring-1 " +
+                      (s.tone === "pos"
+                        ? "bg-primary/15 text-primary ring-primary/30"
+                        : s.tone === "neg"
+                          ? "bg-destructive/15 text-destructive ring-destructive/30"
+                          : "bg-muted text-muted-foreground ring-border")
+                    }
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{s.label}</div>
+                    <div className="truncate text-xs">{s.text}</div>
+                  </div>
+                  {active && (
+                    <span className="font-mono text-[10px] text-primary">▸ now</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        {/* Neural orb */}
+        <div className="relative flex flex-col items-center justify-center overflow-hidden rounded-2xl border border-border/60 bg-card/40 p-6 backdrop-blur-xl lg:col-span-2">
+          <NeuralOrb />
+          <div className="mt-4 text-center">
+            <div className="text-xs font-semibold">Open intelligence</div>
+            <div className="mt-1 text-[11px] text-muted-foreground">
+              Auditable models. No black boxes. Run them locally or on the network.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function NeuralOrb() {
+  const nodes = useMemo(
+    () =>
+      Array.from({ length: 14 }, (_, i) => {
+        const a = (i / 14) * Math.PI * 2;
+        const r = 60 + (i % 3) * 12;
+        return { x: 100 + Math.cos(a) * r, y: 100 + Math.sin(a) * r, i };
+      }),
+    [],
+  );
+  return (
+    <svg viewBox="0 0 200 200" className="h-44 w-44">
+      <defs>
+        <radialGradient id="orb-core" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.9" />
+          <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <circle cx="100" cy="100" r="70" fill="url(#orb-core)" />
+      {nodes.map((n) =>
+        nodes
+          .filter((m) => m.i > n.i && Math.hypot(m.x - n.x, m.y - n.y) < 70)
+          .map((m, j) => (
+            <line
+              key={`${n.i}-${j}`}
+              x1={n.x}
+              y1={n.y}
+              x2={m.x}
+              y2={m.y}
+              stroke="var(--color-primary)"
+              strokeOpacity="0.25"
+              strokeWidth="0.6"
+            />
+          )),
+      )}
+      {nodes.map((n) => (
+        <circle
+          key={n.i}
+          cx={n.x}
+          cy={n.y}
+          r="2.4"
+          fill="var(--color-primary)"
+          style={{ animation: `float-y ${3 + (n.i % 4)}s ease-in-out infinite`, animationDelay: `${n.i * 0.15}s` }}
+        />
+      ))}
+      <circle cx="100" cy="100" r="6" fill="var(--color-primary)">
+        <animate attributeName="r" values="5;9;5" dur="2.4s" repeatCount="indefinite" />
+      </circle>
+    </svg>
+  );
+}
+
 function BackgroundFX() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
