@@ -26,6 +26,8 @@ export interface ChartOverlay {
   takeProfit?: number | null;
   exitPrice?: number | null;
   direction?: "long" | "short";
+  slUsd?: number | null;
+  tpUsd?: number | null;
 }
 
 interface Props {
