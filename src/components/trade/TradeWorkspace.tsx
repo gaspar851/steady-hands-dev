@@ -329,6 +329,9 @@ export function TradeWorkspace({ profile, isAdminView = false }: Props) {
               priceHint={priceHint}
               balance={equity}
               available={balance}
+              pickMode={pickMode}
+              onRequestPick={setPickMode}
+              pickedPrice={pickedPrice}
             />
           </PanelFrame>
         )}
