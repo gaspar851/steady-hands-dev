@@ -265,6 +265,22 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
     add(overlay.exitPrice, "#f0c674", "EXIT", LineStyle.Dotted);
   }, [overlay?.entryPrice, overlay?.stopLoss, overlay?.takeProfit, overlay?.exitPrice]);
 
+  // Chart click → pick price for SL/TP
+  useEffect(() => {
+    const chart = chartRef.current;
+    const series = candleRef.current;
+    if (!chart || !series || !pickMode || !onPickPrice) return;
+    const handler = (param: any) => {
+      const y = param?.point?.y;
+      if (y == null) return;
+      const price = series.coordinateToPrice(y);
+      if (price == null) return;
+      onPickPrice(typeof price === "number" ? price : Number(price));
+    };
+    chart.subscribeClick(handler);
+    return () => { chart.unsubscribeClick(handler); };
+  }, [pickMode, onPickPrice, ready]);
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
