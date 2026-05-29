@@ -138,6 +138,8 @@ export function TradeWorkspace({ profile, isAdminView = false, isGuest = false }
   const equity = balance + unrealizedPnl;
 
   const activeSymbolTrade = openTrades.find((t) => t.symbol === symbol);
+  const mark = marks[symbol];
+  const activeTradePnl = activeSymbolTrade && mark ? pnl(activeSymbolTrade, mark) : null;
   const overlay = useMemo(() => {
     const liveEntry = activeSymbolTrade ? Number(activeSymbolTrade.entry_price) : null;
     const liveSL = activeSymbolTrade?.stop_loss != null ? Number(activeSymbolTrade.stop_loss) : null;
@@ -146,7 +148,8 @@ export function TradeWorkspace({ profile, isAdminView = false, isGuest = false }
     const entryPrice = draft.entry ?? liveEntry;
     const stopLoss = draft.sl ?? liveSL;
     const takeProfit = draft.tp ?? liveTP;
-    if (entryPrice == null && stopLoss == null && takeProfit == null) return undefined;
+    const showCurrent = !!activeSymbolTrade;
+    if (entryPrice == null && stopLoss == null && takeProfit == null && !showCurrent) return undefined;
     return {
       entryPrice,
       stopLoss,
@@ -154,17 +157,58 @@ export function TradeWorkspace({ profile, isAdminView = false, isGuest = false }
       direction: activeSymbolTrade?.direction ?? draft.direction,
       slUsd: draft.slUsd,
       tpUsd: draft.tpUsd,
+      tradeId: activeSymbolTrade?.id ?? null,
+      currentPrice: showCurrent ? (mark ?? null) : null,
+      currentPnl: activeTradePnl,
     };
   }, [
+    activeSymbolTrade?.id,
     activeSymbolTrade?.entry_price,
     activeSymbolTrade?.stop_loss,
     activeSymbolTrade?.take_profit,
     activeSymbolTrade?.direction,
+    mark,
+    activeTradePnl,
     draft.entry,
     draft.sl,
     draft.tp,
     draft.direction,
+    draft.slUsd,
+    draft.tpUsd,
   ]);
+
+  const qc = useQueryClient();
+  const commitSLTP = async (field: "sl" | "tp", price: number | null) => {
+    if (activeSymbolTrade) {
+      try {
+        await updateTradeFn({
+          data: {
+            id: activeSymbolTrade.id,
+            patch: field === "sl" ? { stop_loss: price } : { take_profit: price },
+          } as any,
+        });
+        qc.invalidateQueries({ queryKey: ["trades"] });
+        toast.success(price == null ? `${field.toUpperCase()} removed` : `${field.toUpperCase()} updated`);
+      } catch (e: any) {
+        toast.error(e?.message ?? "Failed to update");
+      }
+    } else {
+      // No live trade — push into the order ticket draft via pickedPrice mechanism
+      setPickedPrice({ mode: field, price, nonce: Date.now() });
+    }
+  };
+
+  const handleCloseActiveTrade = async () => {
+    if (!activeSymbolTrade) return;
+    const exit = mark ?? Number(activeSymbolTrade.entry_price);
+    try {
+      await closeTradeFn({ data: { id: activeSymbolTrade.id, exit_price: exit } });
+      qc.invalidateQueries({ queryKey: ["trades"] });
+      toast.success("Trade closed");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to close trade");
+    }
+  };
 
   const watchEffW = panels.watch.visible ? (panels.watch.minimized ? 28 : watchW) : 0;
   const bookEffW = (panels.book.visible || panels.feed.visible) ? bookW : 0;
