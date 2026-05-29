@@ -90,13 +90,13 @@ export function TradeWorkspace({ profile, isAdminView = false, isGuest = false }
   const [feedH, setFeedH] = useState(220);
   const [historyH, setHistoryH] = useState(240);
 
-  const update = (k: PanelKey, patch: Partial<PanelState>) =>
+  const updatePanel = (k: PanelKey, patch: Partial<PanelState>) =>
     setPanels((p) => ({ ...p, [k]: { ...p[k], ...patch } }));
 
-  const toggleMin = (k: PanelKey) => update(k, { minimized: !panels[k].minimized, maximized: false });
-  const toggleMax = (k: PanelKey) => update(k, { maximized: !panels[k].maximized, minimized: false });
-  const close = (k: PanelKey) => update(k, { visible: false, maximized: false });
-  const open = (k: PanelKey) => update(k, { visible: true, minimized: false, maximized: false });
+  const toggleMin = (k: PanelKey) => updatePanel(k, { minimized: !panels[k].minimized, maximized: false });
+  const toggleMax = (k: PanelKey) => updatePanel(k, { maximized: !panels[k].maximized, minimized: false });
+  const close = (k: PanelKey) => updatePanel(k, { visible: false, maximized: false });
+  const open = (k: PanelKey) => updatePanel(k, { visible: true, minimized: false, maximized: false });
 
   const openTrades = useMemo(() => trades.filter((t) => t.status === "open"), [trades]);
   const closedTrades = useMemo(() => trades.filter((t) => t.status === "closed"), [trades]);
