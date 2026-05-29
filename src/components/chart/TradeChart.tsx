@@ -44,6 +44,7 @@ interface Props {
   onPickPrice?: (price: number) => void;
   onChangeSL?: (price: number | null) => void;
   onChangeTP?: (price: number | null) => void;
+  onChangeEntry?: (price: number | null) => void;
   onCloseTrade?: () => void;
 }
 
@@ -54,7 +55,7 @@ interface ManagedSeries {
   series: ISeriesApi<any>[];
 }
 
-export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleMaximize, pickMode, onPickPrice, onChangeSL, onChangeTP, onCloseTrade }: Props) {
+export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleMaximize, pickMode, onPickPrice, onChangeSL, onChangeTP, onChangeEntry, onCloseTrade }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -313,8 +314,8 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
     return () => { chart.unsubscribeClick(handler); };
   }, [pickMode, onPickPrice, ready]);
 
-  // Track Y coordinate of SL/TP/current price for in-chart labels
-  const [labelCoords, setLabelCoords] = useState<{ sl: number | null; tp: number | null; cur: number | null }>({ sl: null, tp: null, cur: null });
+  // Track Y coordinate of Entry/SL/TP/current price for in-chart labels
+  const [labelCoords, setLabelCoords] = useState<{ entry: number | null; sl: number | null; tp: number | null; cur: number | null }>({ entry: null, sl: null, tp: null, cur: null });
   useEffect(() => {
     if (!ready) return;
     let raf = 0;
@@ -322,31 +323,47 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
     const tick = () => {
       const s = candleRef.current;
       if (s) {
+        const entry = overlay?.entryPrice != null ? s.priceToCoordinate(overlay.entryPrice) : null;
         const sl = overlay?.stopLoss != null ? s.priceToCoordinate(overlay.stopLoss) : null;
         const tp = overlay?.takeProfit != null ? s.priceToCoordinate(overlay.takeProfit) : null;
         const cur = overlay?.currentPrice != null ? s.priceToCoordinate(overlay.currentPrice) : null;
         setLabelCoords((prev) =>
-          prev.sl === sl && prev.tp === tp && prev.cur === cur ? prev : { sl: sl ?? null, tp: tp ?? null, cur: cur ?? null },
+          prev.entry === entry && prev.sl === sl && prev.tp === tp && prev.cur === cur
+            ? prev
+            : { entry: entry ?? null, sl: sl ?? null, tp: tp ?? null, cur: cur ?? null },
         );
       }
       if (!stopped) raf = window.setTimeout(tick, 150) as unknown as number;
     };
     tick();
     return () => { stopped = true; clearTimeout(raf); };
-  }, [ready, overlay?.stopLoss, overlay?.takeProfit, overlay?.currentPrice, overlay?.slUsd, overlay?.tpUsd]);
+  }, [ready, overlay?.entryPrice, overlay?.stopLoss, overlay?.takeProfit, overlay?.currentPrice, overlay?.slUsd, overlay?.tpUsd]);
 
-  // Drag state for SL/TP lines (HTML overlay → commit on pointerup)
-  const [drag, setDrag] = useState<{ mode: "sl" | "tp"; y: number; price: number } | null>(null);
-  function startDrag(mode: "sl" | "tp") {
+  // Drag state for Entry / SL / TP lines (HTML overlay → commit on pointerup)
+  const [drag, setDrag] = useState<{
+    mode: "sl" | "tp" | "entry";
+    y: number;
+    price: number;
+  } | null>(null);
+
+  function startDrag(mode: "sl" | "tp" | "entry") {
     return (e: React.PointerEvent<HTMLDivElement>) => {
-      const onChange = mode === "sl" ? onChangeSL : onChangeTP;
+      const onChange =
+        mode === "sl" ? onChangeSL :
+        mode === "tp" ? onChangeTP :
+        onChangeEntry;
+
       if (!onChange) return;
+
       e.preventDefault();
       e.stopPropagation();
+
       const container = containerRef.current;
       const series = candleRef.current;
       if (!container || !series) return;
+
       const rect = container.getBoundingClientRect();
+
       const move = (ev: PointerEvent) => {
         const y = ev.clientY - rect.top;
         const p = series.coordinateToPrice(y);
@@ -354,6 +371,7 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
         if (!Number.isFinite(price)) return;
         setDrag({ mode, y, price });
       };
+
       const up = (ev: PointerEvent) => {
         window.removeEventListener("pointermove", move);
         window.removeEventListener("pointerup", up);
@@ -363,6 +381,7 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
         setDrag(null);
         if (Number.isFinite(price)) onChange(Number(price));
       };
+
       window.addEventListener("pointermove", move);
       window.addEventListener("pointerup", up);
     };
@@ -459,12 +478,37 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
               Click chart to set {pickMode === "sl" ? "Stop Loss" : "Take Profit"}
             </div>
           )}
-          {/* SL line + draggable label */}
+          {/* Entry line + draggable label */}
+          {(() => {
+            const isDragEntry = drag?.mode === "entry";
+            const yRaw = isDragEntry ? drag!.y : labelCoords.entry;
+            if (yRaw == null) return null;
+            const price = isDragEntry ? drag!.price : overlay?.entryPrice;
+            const interactive = !!onChangeEntry;
+            return (
+              <>
+                {isDragEntry && (
+                  <div className="pointer-events-none absolute left-0 right-0 z-10 border-t border-dashed border-muted-foreground/70" style={{ top: yRaw }} />
+                )}
+                <div
+                  onPointerDown={interactive ? startDrag("entry") : undefined}
+                  className={cn(
+                    "group/entry absolute left-1/2 z-20 -translate-x-1/2 -translate-y-1/2 inline-flex items-center gap-1 rounded-md border border-muted-foreground/60 bg-background/85 px-2 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground backdrop-blur-sm",
+                    interactive ? "pointer-events-auto cursor-ns-resize select-none" : "pointer-events-none",
+                  )}
+                  style={{ top: yRaw }}
+                  title={interactive ? "Drag to move Entry" : undefined}
+                >
+                  <span>ENTRY{price != null ? ` ${Number(price).toFixed(2)}` : ""}</span>
+                </div>
+              </>
+            );
+          })()}
+          {/* SL line + draggable label (shows expected loss, not price) */}
           {(() => {
             const isDragSL = drag?.mode === "sl";
             const yRaw = isDragSL ? drag!.y : labelCoords.sl;
             if (yRaw == null) return null;
-            const price = isDragSL ? drag!.price : overlay?.stopLoss;
             const interactive = !!onChangeSL;
             return (
               <>
@@ -480,10 +524,7 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
                   style={{ top: yRaw }}
                   title={interactive ? "Drag to move Stop Loss" : undefined}
                 >
-                  <span>SL{price != null ? ` ${Number(price).toFixed(2)}` : ""}</span>
-                  {overlay?.slUsd != null && (
-                    <span>· Risk -${Math.abs(overlay.slUsd).toFixed(2)}</span>
-                  )}
+                  <span>SL {overlay?.slUsd != null ? `-$${Math.abs(overlay.slUsd).toFixed(2)}` : "—"}</span>
                   {onChangeSL && (
                     <button
                       type="button"
@@ -499,12 +540,11 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
               </>
             );
           })()}
-          {/* TP line + draggable label */}
+          {/* TP line + draggable label (shows expected gain, not price) */}
           {(() => {
             const isDragTP = drag?.mode === "tp";
             const yRaw = isDragTP ? drag!.y : labelCoords.tp;
             if (yRaw == null) return null;
-            const price = isDragTP ? drag!.price : overlay?.takeProfit;
             const interactive = !!onChangeTP;
             return (
               <>
@@ -520,10 +560,7 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
                   style={{ top: yRaw }}
                   title={interactive ? "Drag to move Take Profit" : undefined}
                 >
-                  <span>TP{price != null ? ` ${Number(price).toFixed(2)}` : ""}</span>
-                  {overlay?.tpUsd != null && (
-                    <span>· Reward +${Math.abs(overlay.tpUsd).toFixed(2)}</span>
-                  )}
+                  <span>TP {overlay?.tpUsd != null ? `+$${Math.abs(overlay.tpUsd).toFixed(2)}` : "—"}</span>
                   {onChangeTP && (
                     <button
                       type="button"

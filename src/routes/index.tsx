@@ -116,21 +116,28 @@ function LandingPage() {
           {t("home.subtitle")}
         </p>
 
-        <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-          <Link to="/signup">
-            <Button size="lg" className="group relative w-full overflow-hidden sm:w-auto">
-              <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-primary-foreground/30 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-              {t("home.cta_join")}
-              <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </Button>
-          </Link>
-          <a href="https://github.com" target="_blank" rel="noopener noreferrer">
-            <Button size="lg" variant="outline" className="w-full sm:w-auto">
-              <Code2 className="mr-1 h-4 w-4" />
-              {t("home.cta_view_source")}
-            </Button>
-          </a>
-        </div>
+             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+            <Link to="/signup">
+              <Button size="lg" className="group relative w-full overflow-hidden sm:w-auto min-w-[170px]">
+                <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-primary-foreground/30 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                {t("home.cta_join")}
+                <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </Button>
+            </Link>
+
+            <a href="https://github.com" target="_blank" rel="noopener noreferrer">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto min-w-[170px]">
+                <Code2 className="mr-1 h-4 w-4" />
+                {t("home.cta_view_source")}
+              </Button>
+            </a>
+
+            <Link to="/trade">
+              <Button size="lg" className="w-full sm:w-auto min-w-[170px]">
+                Trade
+              </Button>
+            </Link>
+          </div>
 
         {/* Stat strip */}
         <div className="mt-12 grid w-full max-w-4xl grid-cols-2 gap-px overflow-hidden rounded-xl border border-border/60 bg-border/40 sm:grid-cols-4">
