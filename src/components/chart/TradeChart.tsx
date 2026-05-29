@@ -33,6 +33,8 @@ interface Props {
   height?: number;
   maximized?: boolean;
   onToggleMaximize?: () => void;
+  pickMode?: "sl" | "tp" | null;
+  onPickPrice?: (price: number) => void;
 }
 
 const intervals: Interval[] = ["1m", "5m", "15m", "1h", "4h", "1d"];
@@ -42,7 +44,7 @@ interface ManagedSeries {
   series: ISeriesApi<any>[];
 }
 
-export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleMaximize }: Props) {
+export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleMaximize, pickMode, onPickPrice }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
