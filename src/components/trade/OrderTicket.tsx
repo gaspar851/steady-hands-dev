@@ -26,7 +26,7 @@ interface Props {
   available?: number;
   pickMode?: "sl" | "tp" | null;
   onRequestPick?: (mode: "sl" | "tp" | null) => void;
-  pickedPrice?: { mode: "sl" | "tp"; price: number; nonce: number } | null;
+  pickedPrice?: { mode: "sl" | "tp"; price: number | null; nonce: number } | null;
   onDraftChange?: (draft: { entry: number | null; sl: number | null; tp: number | null; direction: "long" | "short"; slUsd: number | null; tpUsd: number | null }) => void;
 }
 
