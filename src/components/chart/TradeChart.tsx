@@ -26,6 +26,8 @@ export interface ChartOverlay {
   takeProfit?: number | null;
   exitPrice?: number | null;
   direction?: "long" | "short";
+  slUsd?: number | null;
+  tpUsd?: number | null;
 }
 
 interface Props {
@@ -54,6 +56,9 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
   const barsRef = useRef<Bar[]>([]);
 
   const [interval, setInterval] = useState<Interval>("1h");
+  const [chartType, setChartType] = useState<"line" | "candle">(() => {
+    try { return (localStorage.getItem("trade:chartType") as any) || "line"; } catch { return "line"; }
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -112,15 +117,21 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
       rightPriceScale: { borderColor: "rgba(148,163,184,0.12)" },
       crosshair: { mode: 0 },
     });
-    const candles = chart.addSeries(CandlestickSeries, {
-      upColor: "#22c98a",
-      downColor: "#e85d6f",
-      borderVisible: false,
-      wickUpColor: "#22c98a",
-      wickDownColor: "#e85d6f",
-    });
+    const priceSeries = chartType === "candle"
+      ? chart.addSeries(CandlestickSeries, {
+          upColor: "#22c98a",
+          downColor: "#e85d6f",
+          borderVisible: false,
+          wickUpColor: "#22c98a",
+          wickDownColor: "#e85d6f",
+        })
+      : chart.addSeries(LineSeries, {
+          color: "#5aa9ff",
+          lineWidth: 2,
+          priceLineVisible: false,
+        });
     chartRef.current = chart;
-    candleRef.current = candles;
+    candleRef.current = priceSeries as ISeriesApi<"Candlestick">;
     setReady(true);
     return () => {
       setReady(false);
@@ -130,7 +141,7 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
       indSeriesRef.current.clear();
       linesRef.current = [];
     };
-  }, []);
+  }, [chartType]);
 
   // load klines
   useEffect(() => {
@@ -141,7 +152,10 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
       .then((data) => {
         if (cancelled || !candleRef.current) return;
         barsRef.current = data as Bar[];
-        candleRef.current.setData(data as any);
+        const seriesData = chartType === "candle"
+          ? (data as any)
+          : (data as Bar[]).map((b) => ({ time: b.time, value: b.close }));
+        candleRef.current.setData(seriesData);
         renderAll();
         chartRef.current?.timeScale().fitContent();
       })
@@ -149,7 +163,7 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [symbol, interval]);
+  }, [symbol, interval, chartType]);
 
   // re-render indicators when config changes
   useEffect(() => { renderAll(); /* eslint-disable-next-line */ }, [indicators]);
@@ -282,6 +296,27 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
     return () => { chart.unsubscribeClick(handler); };
   }, [pickMode, onPickPrice, ready]);
 
+  // Track Y coordinate of SL/TP for in-chart USD labels
+  const [labelCoords, setLabelCoords] = useState<{ sl: number | null; tp: number | null }>({ sl: null, tp: null });
+  useEffect(() => {
+    if (!ready) return;
+    let raf = 0;
+    let stopped = false;
+    const tick = () => {
+      const s = candleRef.current;
+      if (s) {
+        const sl = overlay?.stopLoss != null ? s.priceToCoordinate(overlay.stopLoss) : null;
+        const tp = overlay?.takeProfit != null ? s.priceToCoordinate(overlay.takeProfit) : null;
+        setLabelCoords((prev) =>
+          prev.sl === sl && prev.tp === tp ? prev : { sl: sl ?? null, tp: tp ?? null },
+        );
+      }
+      if (!stopped) raf = window.setTimeout(tick, 150) as unknown as number;
+    };
+    tick();
+    return () => { stopped = true; clearTimeout(raf); };
+  }, [ready, overlay?.stopLoss, overlay?.takeProfit, overlay?.slUsd, overlay?.tpUsd]);
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -300,6 +335,19 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
             >{tf}</Button>
           ))}
           <span className="mx-1 h-4 w-px bg-border" />
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 px-2 text-[11px]"
+            onClick={() => {
+              const next = chartType === "line" ? "candle" : "line";
+              setChartType(next);
+              try { localStorage.setItem("trade:chartType", next); } catch {}
+            }}
+            title="Toggle chart type"
+          >
+            {chartType === "line" ? "Line" : "Candles"}
+          </Button>
           <IndicatorsMenu indicators={indicators} onToggle={toggle} onUpdate={update} />
 
           {onToggleMaximize && (
@@ -357,6 +405,22 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
           {pickMode && (
             <div className="pointer-events-none absolute left-1/2 top-2 z-30 -translate-x-1/2 rounded-full border border-foreground/40 bg-background/80 px-3 py-1 text-[10px] uppercase tracking-wider text-foreground backdrop-blur-sm">
               Click chart to set {pickMode === "sl" ? "Stop Loss" : "Take Profit"}
+            </div>
+          )}
+          {labelCoords.sl != null && overlay?.slUsd != null && (
+            <div
+              className="pointer-events-none absolute left-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-md border border-destructive/60 bg-background/85 px-2 py-0.5 font-mono text-[10px] font-semibold text-destructive backdrop-blur-sm"
+              style={{ top: labelCoords.sl }}
+            >
+              Risk {overlay.slUsd >= 0 ? "+" : "-"}${Math.abs(overlay.slUsd).toFixed(2)}
+            </div>
+          )}
+          {labelCoords.tp != null && overlay?.tpUsd != null && (
+            <div
+              className="pointer-events-none absolute left-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-md border border-primary/60 bg-background/85 px-2 py-0.5 font-mono text-[10px] font-semibold text-primary backdrop-blur-sm"
+              style={{ top: labelCoords.tp }}
+            >
+              Reward +${Math.abs(overlay.tpUsd).toFixed(2)}
             </div>
           )}
           <ChartDrawingLayer

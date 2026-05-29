@@ -22,8 +22,8 @@ const STORAGE_KEY = "trade:indicators:v1";
 export const PANE_INDICATORS: IndicatorKind[] = ["rsi", "macd"];
 
 export const DEFAULT_INDICATORS: IndicatorConfig[] = [
-  { id: "sma-9",  kind: "sma", enabled: true,  period: 9,  color: "#f0c674" },
-  { id: "sma-20", kind: "sma", enabled: true,  period: 20, color: "#5aa9ff" },
+  { id: "sma-9",  kind: "sma", enabled: false, period: 9,  color: "#f0c674" },
+  { id: "sma-20", kind: "sma", enabled: false, period: 20, color: "#5aa9ff" },
   { id: "sma-50", kind: "sma", enabled: false, period: 50, color: "#c084fc" },
   { id: "sma-200",kind: "sma", enabled: false, period: 200,color: "#f97316" },
   { id: "ema-9",  kind: "ema", enabled: false, period: 9,  color: "#facc15" },
