@@ -145,6 +145,8 @@ export function TradeWorkspace({ profile, isAdminView = false }: Props) {
       stopLoss,
       takeProfit,
       direction: activeSymbolTrade?.direction ?? draft.direction,
+      slUsd: draft.slUsd,
+      tpUsd: draft.tpUsd,
     };
   }, [
     activeSymbolTrade?.entry_price,
