@@ -82,11 +82,11 @@ function LoginPage() {
         <form onSubmit={onSubmit} className="grid gap-3">
           <div className="grid gap-1.5">
             <Label htmlFor="email" className="text-xs">{t("auth.email")}</Label>
-            <Input id="email" type="email" required autoComplete="email" maxLength={255} value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input id="email" name="email" type="email" required autoComplete="email" inputMode="email" maxLength={255} value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="password" className="text-xs">{t("auth.password")}</Label>
-            <Input id="password" type="password" required autoComplete="current-password" maxLength={72} value={password} onChange={(e) => setPassword(e.target.value)} />
+            <Input id="password" name="password" type="password" required autoComplete="current-password" maxLength={72} value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
           <Button type="submit" disabled={loading}>{loading ? t("common.signing_in") : t("common.sign_in")}</Button>
         </form>
