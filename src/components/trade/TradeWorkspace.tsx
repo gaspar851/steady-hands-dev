@@ -62,6 +62,8 @@ export function TradeWorkspace({ profile, isAdminView = false }: Props) {
   const [symbol, setSymbol] = useState("BTCUSDT");
   const [editing, setEditing] = useState<TradeDTO | null>(null);
   const [priceHint, setPriceHint] = useState<number | null>(null);
+  const [pickMode, setPickMode] = useState<"sl" | "tp" | null>(null);
+  const [pickedPrice, setPickedPrice] = useState<{ mode: "sl" | "tp"; price: number; nonce: number } | null>(null);
 
   const initial: PanelState = { visible: true, minimized: false, maximized: false };
   const [panels, setPanels] = useState<Record<PanelKey, PanelState>>({
