@@ -40,6 +40,7 @@ export function OrderTicket({
   pickMode,
   onRequestPick,
   pickedPrice,
+  onDraftChange,
 }: Props) {
   const { t } = useTranslation();
   const qc = useQueryClient();
