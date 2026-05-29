@@ -29,6 +29,9 @@ export interface ChartOverlay {
   direction?: "long" | "short";
   slUsd?: number | null;
   tpUsd?: number | null;
+  currentPrice?: number | null;
+  currentPnl?: number | null;
+  tradeId?: string | null;
 }
 
 interface Props {
@@ -39,6 +42,9 @@ interface Props {
   onToggleMaximize?: () => void;
   pickMode?: "sl" | "tp" | null;
   onPickPrice?: (price: number) => void;
+  onChangeSL?: (price: number | null) => void;
+  onChangeTP?: (price: number | null) => void;
+  onCloseTrade?: () => void;
 }
 
 const intervals: Interval[] = ["1m", "5m", "15m", "1h", "4h", "1d"];
