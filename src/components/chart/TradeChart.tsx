@@ -126,8 +126,10 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
           wickUpColor: "#22c98a",
           wickDownColor: "#e85d6f",
         })
-      : chart.addSeries(LineSeries, {
-          color: "#5aa9ff",
+      : chart.addSeries(AreaSeries, {
+          lineColor: "#22c98a",
+          topColor: "rgba(34, 201, 138, 0.35)",
+          bottomColor: "rgba(34, 201, 138, 0.02)",
           lineWidth: 2,
           priceLineVisible: false,
         });
