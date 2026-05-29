@@ -114,8 +114,8 @@ export function OrderTicket({
 
   // Push current draft up so the chart can show live SL/TP/entry lines
   useEffect(() => {
-    onDraftChange?.({ entry: ep || null, sl, tp, direction });
-  }, [ep, sl, tp, direction, onDraftChange]);
+    onDraftChange?.({ entry: ep || null, sl, tp, direction, slUsd: slLossUsd, tpUsd: tpGainUsd });
+  }, [ep, sl, tp, direction, slLossUsd, tpGainUsd, onDraftChange]);
 
   const mutation = useMutation({
     mutationFn: async () => {
