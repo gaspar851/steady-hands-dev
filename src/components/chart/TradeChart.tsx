@@ -163,7 +163,7 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [symbol, interval]);
+  }, [symbol, interval, chartType]);
 
   // re-render indicators when config changes
   useEffect(() => { renderAll(); /* eslint-disable-next-line */ }, [indicators]);
