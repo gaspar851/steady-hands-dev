@@ -152,7 +152,10 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
       .then((data) => {
         if (cancelled || !candleRef.current) return;
         barsRef.current = data as Bar[];
-        candleRef.current.setData(data as any);
+        const seriesData = chartType === "candle"
+          ? (data as any)
+          : (data as Bar[]).map((b) => ({ time: b.time, value: b.close }));
+        candleRef.current.setData(seriesData);
         renderAll();
         chartRef.current?.timeScale().fitContent();
       })
