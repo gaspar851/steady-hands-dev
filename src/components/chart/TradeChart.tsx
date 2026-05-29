@@ -407,6 +407,22 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
               Click chart to set {pickMode === "sl" ? "Stop Loss" : "Take Profit"}
             </div>
           )}
+          {labelCoords.sl != null && overlay?.slUsd != null && (
+            <div
+              className="pointer-events-none absolute left-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-md border border-destructive/60 bg-background/85 px-2 py-0.5 font-mono text-[10px] font-semibold text-destructive backdrop-blur-sm"
+              style={{ top: labelCoords.sl }}
+            >
+              Risk {overlay.slUsd >= 0 ? "+" : "-"}${Math.abs(overlay.slUsd).toFixed(2)}
+            </div>
+          )}
+          {labelCoords.tp != null && overlay?.tpUsd != null && (
+            <div
+              className="pointer-events-none absolute left-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-md border border-primary/60 bg-background/85 px-2 py-0.5 font-mono text-[10px] font-semibold text-primary backdrop-blur-sm"
+              style={{ top: labelCoords.tp }}
+            >
+              Reward +${Math.abs(overlay.tpUsd).toFixed(2)}
+            </div>
+          )}
           <ChartDrawingLayer
             chart={ready ? chartRef.current : null}
             series={ready ? candleRef.current : null}
