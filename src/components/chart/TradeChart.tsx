@@ -351,8 +351,13 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
           canUndo={canUndo}
           canRedo={canRedo}
         />
-        <div className="group relative flex-1 min-h-0">
-          <div ref={containerRef} style={maximized ? undefined : { height }} className="h-full w-full rounded-md border border-border bg-card/40" />
+        <div className={cn("group relative flex-1 min-h-0", pickMode && "cursor-crosshair")}>
+          <div ref={containerRef} style={maximized ? undefined : { height }} className={cn("h-full w-full rounded-md border bg-card/40", pickMode ? "border-foreground/60 ring-1 ring-foreground/30" : "border-border")} />
+          {pickMode && (
+            <div className="pointer-events-none absolute left-1/2 top-2 z-30 -translate-x-1/2 rounded-full border border-foreground/40 bg-background/80 px-3 py-1 text-[10px] uppercase tracking-wider text-foreground backdrop-blur-sm">
+              Click chart to set {pickMode === "sl" ? "Stop Loss" : "Take Profit"}
+            </div>
+          )}
           <ChartDrawingLayer
             chart={ready ? chartRef.current : null}
             series={ready ? candleRef.current : null}
