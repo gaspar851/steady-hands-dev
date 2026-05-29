@@ -18,6 +18,7 @@ import { IndicatorsMenu } from "./IndicatorsMenu";
 import { DrawingToolbar, type DrawTool } from "./DrawingToolbar";
 import { ChartDrawingLayer, type Drawing } from "./ChartDrawingLayer";
 import { sma, ema, bollinger, rsi, macd, type Bar } from "@/lib/indicators";
+import { cn } from "@/lib/utils";
 
 export interface ChartOverlay {
   entryPrice?: number | null;
