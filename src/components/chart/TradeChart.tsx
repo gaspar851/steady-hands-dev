@@ -314,6 +314,19 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
             >{tf}</Button>
           ))}
           <span className="mx-1 h-4 w-px bg-border" />
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 px-2 text-[11px]"
+            onClick={() => {
+              const next = chartType === "line" ? "candle" : "line";
+              setChartType(next);
+              try { localStorage.setItem("trade:chartType", next); } catch {}
+            }}
+            title="Toggle chart type"
+          >
+            {chartType === "line" ? "Line" : "Candles"}
+          </Button>
           <IndicatorsMenu indicators={indicators} onToggle={toggle} onUpdate={update} />
 
           {onToggleMaximize && (
