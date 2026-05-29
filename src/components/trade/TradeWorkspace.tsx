@@ -319,6 +319,8 @@ export function TradeWorkspace({ profile, isAdminView = false }: Props) {
               onSymbolChange={setSymbol}
               isAdmin={isAdminView}
               priceHint={priceHint}
+              balance={equity}
+              available={balance}
             />
           </PanelFrame>
         )}
