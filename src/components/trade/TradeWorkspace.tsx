@@ -41,7 +41,7 @@ type PanelLabels = Record<PanelKey, string>;
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
-export function TradeWorkspace({ profile, isAdminView = false }: Props) {
+export function TradeWorkspace({ profile, isAdminView = false, isGuest = false }: Props) {
   const { t } = useTranslation();
   const PANEL_LABELS: PanelLabels = {
     watch: t("trade.panel_watch"),
@@ -58,7 +58,9 @@ export function TradeWorkspace({ profile, isAdminView = false }: Props) {
     refetchInterval: 30_000,
     refetchOnWindowFocus: false,
     staleTime: 5_000,
+    enabled: !isGuest && !!profile.id,
   });
+
   const trades = data?.trades ?? [];
 
   const [symbol, setSymbol] = useState("BTCUSDT");
@@ -342,6 +344,7 @@ export function TradeWorkspace({ profile, isAdminView = false }: Props) {
               symbol={symbol}
               onSymbolChange={setSymbol}
               isAdmin={isAdminView}
+              isGuest={isGuest}
               priceHint={priceHint}
               balance={equity}
               available={balance}
@@ -350,6 +353,7 @@ export function TradeWorkspace({ profile, isAdminView = false }: Props) {
               pickedPrice={pickedPrice}
               onDraftChange={setDraft}
             />
+
           </PanelFrame>
         )}
       </div>
