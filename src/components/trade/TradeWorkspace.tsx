@@ -344,6 +344,7 @@ export function TradeWorkspace({ profile, isAdminView = false }: Props) {
               pickMode={pickMode}
               onRequestPick={setPickMode}
               pickedPrice={pickedPrice}
+              onDraftChange={setDraft}
             />
           </PanelFrame>
         )}
