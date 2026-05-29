@@ -91,10 +91,10 @@ function SignupPage() {
           </div>
         </div>
         <form onSubmit={onSubmit} className="grid gap-3">
-          <Field label={t("auth.full_name")}><Input required maxLength={120} value={form.full_name} onChange={set("full_name")} /></Field>
-          <Field label={t("auth.phone")}><Input required maxLength={32} value={form.phone} onChange={set("phone")} /></Field>
-          <Field label={t("auth.email")}><Input required type="email" autoComplete="email" maxLength={255} value={form.email} onChange={set("email")} /></Field>
-          <Field label={t("auth.password")}><Input required type="password" minLength={8} maxLength={72} autoComplete="new-password" value={form.password} onChange={set("password")} /></Field>
+          <Field label={t("auth.full_name")}><Input name="name" autoComplete="name" required maxLength={120} value={form.full_name} onChange={set("full_name")} /></Field>
+          <Field label={t("auth.phone")}><Input name="tel" type="tel" autoComplete="tel" inputMode="tel" required maxLength={32} value={form.phone} onChange={set("phone")} /></Field>
+          <Field label={t("auth.email")}><Input name="email" required type="email" autoComplete="email" inputMode="email" maxLength={255} value={form.email} onChange={set("email")} /></Field>
+          <Field label={t("auth.password")}><Input name="new-password" required type="password" minLength={8} maxLength={72} autoComplete="new-password" value={form.password} onChange={set("password")} /></Field>
           <Button type="submit" disabled={loading}>{loading ? t("common.creating") : t("common.create_account")}</Button>
         </form>
         <p className="mt-4 text-center text-xs text-muted-foreground">
