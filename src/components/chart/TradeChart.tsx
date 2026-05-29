@@ -117,15 +117,21 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
       rightPriceScale: { borderColor: "rgba(148,163,184,0.12)" },
       crosshair: { mode: 0 },
     });
-    const candles = chart.addSeries(CandlestickSeries, {
-      upColor: "#22c98a",
-      downColor: "#e85d6f",
-      borderVisible: false,
-      wickUpColor: "#22c98a",
-      wickDownColor: "#e85d6f",
-    });
+    const priceSeries = chartType === "candle"
+      ? chart.addSeries(CandlestickSeries, {
+          upColor: "#22c98a",
+          downColor: "#e85d6f",
+          borderVisible: false,
+          wickUpColor: "#22c98a",
+          wickDownColor: "#e85d6f",
+        })
+      : chart.addSeries(LineSeries, {
+          color: "#5aa9ff",
+          lineWidth: 2,
+          priceLineVisible: false,
+        });
     chartRef.current = chart;
-    candleRef.current = candles;
+    candleRef.current = priceSeries as ISeriesApi<"Candlestick">;
     setReady(true);
     return () => {
       setReady(false);
@@ -135,7 +141,7 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
       indSeriesRef.current.clear();
       linesRef.current = [];
     };
-  }, []);
+  }, [chartType]);
 
   // load klines
   useEffect(() => {
