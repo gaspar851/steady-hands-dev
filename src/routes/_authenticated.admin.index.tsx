@@ -41,12 +41,19 @@ function MasterDashboard() {
             Deposits →
           </Link>
           <Link
+            to="/admin/wire"
+            className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-accent"
+          >
+            Wire Transfer →
+          </Link>
+          <Link
             to="/admin/knowledge"
             className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-accent"
           >
             Manage AI Knowledge →
           </Link>
         </div>
+
       </div>
       {rows.length === 0 ? (
         <Card className="p-6 text-center text-sm text-muted-foreground">No users yet.</Card>

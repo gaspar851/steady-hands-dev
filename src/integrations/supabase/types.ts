@@ -333,6 +333,60 @@ export type Database = {
         }
         Relationships: []
       }
+      wire_transfer_details: {
+        Row: {
+          account_name: string
+          account_number: string | null
+          bank_address: string | null
+          bank_name: string
+          country: string
+          created_at: string
+          currency: string
+          iban: string | null
+          id: string
+          is_active: boolean
+          notes: string | null
+          reference_instructions: string | null
+          routing_number: string | null
+          swift: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_name: string
+          account_number?: string | null
+          bank_address?: string | null
+          bank_name: string
+          country: string
+          created_at?: string
+          currency?: string
+          iban?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          reference_instructions?: string | null
+          routing_number?: string | null
+          swift?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_name?: string
+          account_number?: string | null
+          bank_address?: string | null
+          bank_name?: string
+          country?: string
+          created_at?: string
+          currency?: string
+          iban?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          reference_instructions?: string | null
+          routing_number?: string | null
+          swift?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
