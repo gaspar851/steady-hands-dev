@@ -54,7 +54,7 @@ interface ManagedSeries {
   series: ISeriesApi<any>[];
 }
 
-export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleMaximize, pickMode, onPickPrice }: Props) {
+export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleMaximize, pickMode, onPickPrice, onChangeSL, onChangeTP, onCloseTrade }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
