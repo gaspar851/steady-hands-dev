@@ -231,6 +231,12 @@ export function TradeWorkspace({ profile, isAdminView = false }: Props) {
                 overlay={overlay}
                 height={undefined as any}
                 maximized
+                pickMode={pickMode}
+                onPickPrice={(price) => {
+                  if (!pickMode) return;
+                  setPickedPrice({ mode: pickMode, price, nonce: Date.now() });
+                  setPickMode(null);
+                }}
               />
 
             </PanelFrame>
