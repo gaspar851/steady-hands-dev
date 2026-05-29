@@ -166,7 +166,7 @@ export function TradeWorkspace({ profile, isAdminView = false }: Props) {
           <SymbolBar symbol={symbol} />
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Stat label="Trader" value={profile.full_name || profile.email} mono={false} />
+          {/* Trader name shown in top-right user menu; removed here to avoid duplication */}
           <Stat label={t("trade.balance")} value={usd(balance)} />
           <Stat label="Equity" value={usd(equity)} tone={unrealizedPnl >= 0 ? "pos" : "neg"} />
           <Stat label="Open Trades" value={usd(unrealizedPnl)} tone={unrealizedPnl >= 0 ? "pos" : "neg"} />
