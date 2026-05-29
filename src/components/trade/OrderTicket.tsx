@@ -24,7 +24,7 @@ interface Props {
   pickMode?: "sl" | "tp" | null;
   onRequestPick?: (mode: "sl" | "tp" | null) => void;
   pickedPrice?: { mode: "sl" | "tp"; price: number; nonce: number } | null;
-  onDraftChange?: (draft: { entry: number | null; sl: number | null; tp: number | null; direction: "long" | "short" }) => void;
+  onDraftChange?: (draft: { entry: number | null; sl: number | null; tp: number | null; direction: "long" | "short"; slUsd: number | null; tpUsd: number | null }) => void;
 }
 
 type OrderType = "market" | "limit";
