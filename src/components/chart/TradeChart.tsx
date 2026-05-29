@@ -29,6 +29,9 @@ export interface ChartOverlay {
   direction?: "long" | "short";
   slUsd?: number | null;
   tpUsd?: number | null;
+  currentPrice?: number | null;
+  currentPnl?: number | null;
+  tradeId?: string | null;
 }
 
 interface Props {
@@ -39,6 +42,9 @@ interface Props {
   onToggleMaximize?: () => void;
   pickMode?: "sl" | "tp" | null;
   onPickPrice?: (price: number) => void;
+  onChangeSL?: (price: number | null) => void;
+  onChangeTP?: (price: number | null) => void;
+  onCloseTrade?: () => void;
 }
 
 const intervals: Interval[] = ["1m", "5m", "15m", "1h", "4h", "1d"];
@@ -48,7 +54,7 @@ interface ManagedSeries {
   series: ISeriesApi<any>[];
 }
 
-export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleMaximize, pickMode, onPickPrice }: Props) {
+export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleMaximize, pickMode, onPickPrice, onChangeSL, onChangeTP, onCloseTrade }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -307,8 +313,8 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
     return () => { chart.unsubscribeClick(handler); };
   }, [pickMode, onPickPrice, ready]);
 
-  // Track Y coordinate of SL/TP for in-chart USD labels
-  const [labelCoords, setLabelCoords] = useState<{ sl: number | null; tp: number | null }>({ sl: null, tp: null });
+  // Track Y coordinate of SL/TP/current price for in-chart labels
+  const [labelCoords, setLabelCoords] = useState<{ sl: number | null; tp: number | null; cur: number | null }>({ sl: null, tp: null, cur: null });
   useEffect(() => {
     if (!ready) return;
     let raf = 0;
@@ -318,15 +324,50 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
       if (s) {
         const sl = overlay?.stopLoss != null ? s.priceToCoordinate(overlay.stopLoss) : null;
         const tp = overlay?.takeProfit != null ? s.priceToCoordinate(overlay.takeProfit) : null;
+        const cur = overlay?.currentPrice != null ? s.priceToCoordinate(overlay.currentPrice) : null;
         setLabelCoords((prev) =>
-          prev.sl === sl && prev.tp === tp ? prev : { sl: sl ?? null, tp: tp ?? null },
+          prev.sl === sl && prev.tp === tp && prev.cur === cur ? prev : { sl: sl ?? null, tp: tp ?? null, cur: cur ?? null },
         );
       }
       if (!stopped) raf = window.setTimeout(tick, 150) as unknown as number;
     };
     tick();
     return () => { stopped = true; clearTimeout(raf); };
-  }, [ready, overlay?.stopLoss, overlay?.takeProfit, overlay?.slUsd, overlay?.tpUsd]);
+  }, [ready, overlay?.stopLoss, overlay?.takeProfit, overlay?.currentPrice, overlay?.slUsd, overlay?.tpUsd]);
+
+  // Drag state for SL/TP lines (HTML overlay → commit on pointerup)
+  const [drag, setDrag] = useState<{ mode: "sl" | "tp"; y: number; price: number } | null>(null);
+  function startDrag(mode: "sl" | "tp") {
+    return (e: React.PointerEvent<HTMLDivElement>) => {
+      const onChange = mode === "sl" ? onChangeSL : onChangeTP;
+      if (!onChange) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const container = containerRef.current;
+      const series = candleRef.current;
+      if (!container || !series) return;
+      const rect = container.getBoundingClientRect();
+      const move = (ev: PointerEvent) => {
+        const y = ev.clientY - rect.top;
+        const p = series.coordinateToPrice(y);
+        const price = typeof p === "number" ? p : Number(p);
+        if (!Number.isFinite(price)) return;
+        setDrag({ mode, y, price });
+      };
+      const up = (ev: PointerEvent) => {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+        const y = ev.clientY - rect.top;
+        const p = series.coordinateToPrice(y);
+        const price = typeof p === "number" ? p : Number(p);
+        setDrag(null);
+        if (Number.isFinite(price)) onChange(Number(price));
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+    };
+  }
+
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">
@@ -418,20 +459,108 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
               Click chart to set {pickMode === "sl" ? "Stop Loss" : "Take Profit"}
             </div>
           )}
-          {labelCoords.sl != null && overlay?.slUsd != null && (
+          {/* SL line + draggable label */}
+          {(() => {
+            const isDragSL = drag?.mode === "sl";
+            const yRaw = isDragSL ? drag!.y : labelCoords.sl;
+            if (yRaw == null) return null;
+            const price = isDragSL ? drag!.price : overlay?.stopLoss;
+            const interactive = !!onChangeSL;
+            return (
+              <>
+                {isDragSL && (
+                  <div className="pointer-events-none absolute left-0 right-0 z-10 border-t border-dashed border-destructive/70" style={{ top: yRaw }} />
+                )}
+                <div
+                  onPointerDown={interactive ? startDrag("sl") : undefined}
+                  className={cn(
+                    "group/sl absolute left-1/2 z-20 -translate-x-1/2 -translate-y-1/2 inline-flex items-center gap-1 rounded-md border border-destructive/60 bg-background/85 px-2 py-0.5 font-mono text-[10px] font-semibold text-destructive backdrop-blur-sm",
+                    interactive ? "pointer-events-auto cursor-ns-resize select-none" : "pointer-events-none",
+                  )}
+                  style={{ top: yRaw }}
+                  title={interactive ? "Drag to move Stop Loss" : undefined}
+                >
+                  <span>SL{price != null ? ` ${Number(price).toFixed(2)}` : ""}</span>
+                  {overlay?.slUsd != null && (
+                    <span>· Risk -${Math.abs(overlay.slUsd).toFixed(2)}</span>
+                  )}
+                  {onChangeSL && (
+                    <button
+                      type="button"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => { e.stopPropagation(); onChangeSL(null); }}
+                      title="Remove Stop Loss"
+                      className="ml-0.5 hidden h-3.5 w-3.5 items-center justify-center rounded-sm hover:bg-destructive/20 group-hover/sl:inline-flex"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  )}
+                </div>
+              </>
+            );
+          })()}
+          {/* TP line + draggable label */}
+          {(() => {
+            const isDragTP = drag?.mode === "tp";
+            const yRaw = isDragTP ? drag!.y : labelCoords.tp;
+            if (yRaw == null) return null;
+            const price = isDragTP ? drag!.price : overlay?.takeProfit;
+            const interactive = !!onChangeTP;
+            return (
+              <>
+                {isDragTP && (
+                  <div className="pointer-events-none absolute left-0 right-0 z-10 border-t border-dashed border-primary/70" style={{ top: yRaw }} />
+                )}
+                <div
+                  onPointerDown={interactive ? startDrag("tp") : undefined}
+                  className={cn(
+                    "group/tp absolute left-1/2 z-20 -translate-x-1/2 -translate-y-1/2 inline-flex items-center gap-1 rounded-md border border-primary/60 bg-background/85 px-2 py-0.5 font-mono text-[10px] font-semibold text-primary backdrop-blur-sm",
+                    interactive ? "pointer-events-auto cursor-ns-resize select-none" : "pointer-events-none",
+                  )}
+                  style={{ top: yRaw }}
+                  title={interactive ? "Drag to move Take Profit" : undefined}
+                >
+                  <span>TP{price != null ? ` ${Number(price).toFixed(2)}` : ""}</span>
+                  {overlay?.tpUsd != null && (
+                    <span>· Reward +${Math.abs(overlay.tpUsd).toFixed(2)}</span>
+                  )}
+                  {onChangeTP && (
+                    <button
+                      type="button"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => { e.stopPropagation(); onChangeTP(null); }}
+                      title="Remove Take Profit"
+                      className="ml-0.5 hidden h-3.5 w-3.5 items-center justify-center rounded-sm hover:bg-primary/20 group-hover/tp:inline-flex"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  )}
+                </div>
+              </>
+            );
+          })()}
+          {/* Current price label with live P/L + close button */}
+          {labelCoords.cur != null && overlay?.tradeId && (
             <div
-              className="pointer-events-none absolute left-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-md border border-destructive/60 bg-background/85 px-2 py-0.5 font-mono text-[10px] font-semibold text-destructive backdrop-blur-sm"
-              style={{ top: labelCoords.sl }}
+              className="group/cur pointer-events-auto absolute right-14 z-20 -translate-y-1/2 inline-flex items-center gap-1 rounded-md border border-foreground/40 bg-background/90 px-2 py-0.5 font-mono text-[10px] font-semibold backdrop-blur-sm"
+              style={{ top: labelCoords.cur }}
             >
-              Risk {overlay.slUsd >= 0 ? "+" : "-"}${Math.abs(overlay.slUsd).toFixed(2)}
-            </div>
-          )}
-          {labelCoords.tp != null && overlay?.tpUsd != null && (
-            <div
-              className="pointer-events-none absolute left-1/2 z-20 -translate-x-1/2 -translate-y-1/2 rounded-md border border-primary/60 bg-background/85 px-2 py-0.5 font-mono text-[10px] font-semibold text-primary backdrop-blur-sm"
-              style={{ top: labelCoords.tp }}
-            >
-              Reward +${Math.abs(overlay.tpUsd).toFixed(2)}
+              <span className="text-muted-foreground">Mark {overlay.currentPrice?.toFixed(2)}</span>
+              {overlay.currentPnl != null && (
+                <span className={overlay.currentPnl >= 0 ? "text-primary" : "text-destructive"}>
+                  {overlay.currentPnl >= 0 ? "+" : "-"}${Math.abs(overlay.currentPnl).toFixed(2)}
+                </span>
+              )}
+              {onCloseTrade && (
+                <button
+                  type="button"
+                  onClick={onCloseTrade}
+                  title="Close trade at market"
+                  className="ml-0.5 hidden h-3.5 w-3.5 items-center justify-center rounded-sm text-destructive hover:bg-destructive/20 group-hover/cur:inline-flex"
+                >
+                  <X className="h-2.5 w-2.5" />
+                </button>
+              )}
             </div>
           )}
           <ChartDrawingLayer
