@@ -40,7 +40,7 @@ interface Props {
   height?: number;
   maximized?: boolean;
   onToggleMaximize?: () => void;
-  pickMode?: "sl" | "tp" | null;
+  pickMode?: "sl" | "tp" | "limit" | null;
   onPickPrice?: (price: number) => void;
   onChangeSL?: (price: number | null) => void;
   onChangeTP?: (price: number | null) => void;

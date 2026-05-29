@@ -24,9 +24,9 @@ interface Props {
   priceHint?: number | null;
   balance?: number;
   available?: number;
-  pickMode?: "sl" | "tp" | null;
-  onRequestPick?: (mode: "sl" | "tp" | null) => void;
-  pickedPrice?: { mode: "sl" | "tp"; price: number | null; nonce: number } | null;
+  pickMode?: "sl" | "tp" | "limit" | null;
+  onRequestPick?: (mode: "sl" | "tp" | "limit" | null) => void;
+  pickedPrice?: { mode: "sl" | "tp" | "limit"; price: number | null; nonce: number } | null;
   onDraftChange?: (draft: { entry: number | null; sl: number | null; tp: number | null; direction: "long" | "short"; slUsd: number | null; tpUsd: number | null }) => void;
 }
 
@@ -95,7 +95,11 @@ export function OrderTicket({
     if (!pickedPrice) return;
     const v = pickedPrice.price == null ? "" : pickedPrice.price.toString();
     if (pickedPrice.mode === "sl") setStopLoss(v);
-    else setTakeProfit(v);
+    else if (pickedPrice.mode === "tp") setTakeProfit(v);
+    else if (pickedPrice.mode === "limit") {
+      setOrderType("limit");
+      setEntryPrice(v);
+    }
   }, [pickedPrice?.nonce]);
 
   const ep = +entryPrice || 0;
@@ -243,21 +247,38 @@ export function OrderTicket({
       </div>
 
       {orderType === "limit" && (
-        <div className="relative">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-            USD
-          </span>
-          <Input
-            type="number"
-            step="any"
-            value={entryPrice}
-            onChange={(e) => setEntryPrice(e.target.value)}
-            className="h-11 pl-12 pr-16 font-mono text-base"
-            placeholder="Limit price"
-          />
-          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] uppercase text-muted-foreground">
-            Price
-          </span>
+        <div className="flex items-center gap-2">
+          {onRequestPick && (
+            <button
+              type="button"
+              onClick={() => onRequestPick(pickMode === "limit" ? null : "limit")}
+              title="Click on chart to set limit price"
+              className={cn(
+                "flex h-11 w-11 shrink-0 items-center justify-center rounded-md border transition-colors",
+                pickMode === "limit"
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border bg-muted/30 text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Crosshair className="h-4 w-4" />
+            </button>
+          )}
+          <div className="relative flex-1">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+              USD
+            </span>
+            <Input
+              type="number"
+              step="any"
+              value={entryPrice}
+              onChange={(e) => setEntryPrice(e.target.value)}
+              className="h-11 pl-12 pr-16 font-mono text-base"
+              placeholder="Limit price — or click chart"
+            />
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] uppercase text-muted-foreground">
+              Price
+            </span>
+          </div>
         </div>
       )}
 
