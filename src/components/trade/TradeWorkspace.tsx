@@ -53,6 +53,9 @@ export function TradeWorkspace({ profile, isAdminView = false, isGuest = false }
     history: t("trade.panel_history"),
   };
   const list = useServerFn(listTrades);
+  const update = useServerFn(updateTrade);
+  const close = useServerFn(closeTrade);
+  const qc = useQueryClient();
   const { data } = useQuery({
     queryKey: ["trades", profile.id],
     queryFn: () => list({ data: { userId: profile.id } }),
