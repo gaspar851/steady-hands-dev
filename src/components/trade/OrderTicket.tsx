@@ -2,10 +2,9 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { TrendingUp, TrendingDown, Crosshair, ChevronDown } from "lucide-react";
+import { TrendingUp, TrendingDown, Crosshair } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
 import { getBookTicker } from "@/lib/binance";
 import { createTrade } from "@/lib/trades.functions";
 import { usd } from "@/lib/format";
@@ -22,11 +21,12 @@ interface Props {
   priceHint?: number | null;
   balance?: number;
   available?: number;
+  pickMode?: "sl" | "tp" | null;
+  onRequestPick?: (mode: "sl" | "tp" | null) => void;
+  pickedPrice?: { mode: "sl" | "tp"; price: number; nonce: number } | null;
 }
 
 type OrderType = "market" | "limit";
-
-const LEV_PRESETS = [1, 5, 10, 25, 50, 100];
 
 export function OrderTicket({
   targetUserId,
@@ -36,6 +36,9 @@ export function OrderTicket({
   priceHint,
   balance,
   available,
+  pickMode,
+  onRequestPick,
+  pickedPrice,
 }: Props) {
   const { t } = useTranslation();
   const qc = useQueryClient();
@@ -45,8 +48,7 @@ export function OrderTicket({
   const [orderType, setOrderType] = useState<OrderType>("market");
   const [entryPrice, setEntryPrice] = useState("");
   const [positionSize, setPositionSize] = useState("500");
-  const [leverage, setLeverage] = useState(defaultLeverage);
-  const [showLeverage, setShowLeverage] = useState(false);
+  const leverage = defaultLeverage; // fixed per user setting; no per-trade override
   const [stopLoss, setStopLoss] = useState("");
   const [takeProfit, setTakeProfit] = useState("");
   const [adminFee, setAdminFee] = useState("0");
@@ -80,12 +82,31 @@ export function OrderTicket({
     }
   }, [priceHint]);
 
+  // Apply prices picked from chart
+  useEffect(() => {
+    if (!pickedPrice) return;
+    const v = pickedPrice.price.toString();
+    if (pickedPrice.mode === "sl") setStopLoss(v);
+    else setTakeProfit(v);
+  }, [pickedPrice?.nonce]);
+
   const ep = +entryPrice || 0;
   const ps = +positionSize || 0;
   const sl = stopLoss ? +stopLoss : null;
   const tp = takeProfit ? +takeProfit : null;
-  const slPct = ep && sl ? ((sl - ep) / ep) * 100 * (direction === "long" ? 1 : -1) : null;
-  const tpPct = ep && tp ? ((tp - ep) / ep) * 100 * (direction === "long" ? 1 : -1) : null;
+
+  // Leveraged % move vs margin. SL is shown as negative loss, TP as positive gain.
+  const slPct =
+    ep && sl
+      ? ((sl - ep) / ep) * leverage * 100 * (direction === "long" ? 1 : -1)
+      : null;
+  const tpPct =
+    ep && tp
+      ? ((tp - ep) / ep) * leverage * 100 * (direction === "long" ? 1 : -1)
+      : null;
+  const slLossUsd = slPct != null && ps ? (ps * slPct) / 100 : null;
+  const tpGainUsd = tpPct != null && ps ? (ps * tpPct) / 100 : null;
+
   const slInvalid = ep && sl ? (direction === "long" ? sl >= ep : sl <= ep) : false;
   const tpInvalid = ep && tp ? (direction === "long" ? tp <= ep : tp >= ep) : false;
 
@@ -139,12 +160,12 @@ export function OrderTicket({
           <span className="text-xs text-muted-foreground">{pretty}</span>
         </div>
         <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-          {mutation.isPending ? "Submitting…" : "Ready to submit"}
+          {mutation.isPending ? "Submitting…" : `Leverage ${leverage}x`}
         </span>
       </div>
 
-      {/* Balance / Position / Leverage card */}
-      <div className="grid grid-cols-3 gap-3 rounded-lg border border-border bg-card/40 px-3 py-2.5">
+      {/* Balance / Leverage card (Notional removed) */}
+      <div className="grid grid-cols-2 gap-3 rounded-lg border border-border bg-card/40 px-3 py-2.5">
         <div>
           <div className="text-[9px] uppercase tracking-wide text-muted-foreground">Virtual</div>
           <div className="font-mono text-sm font-semibold text-primary">
@@ -156,18 +177,11 @@ export function OrderTicket({
             </div>
           )}
         </div>
-        <div>
-          <div className="text-[9px] uppercase tracking-wide text-muted-foreground">Notional</div>
-          <div className="font-mono text-sm font-semibold">
-            {usd(notionalOf(ps, leverage || 1))}
-          </div>
-          <div className="font-mono text-[10px] text-muted-foreground">
-            Fee ~ {usd(feeOn(notionalOf(ps, leverage || 1)) * 2)}
-          </div>
-        </div>
         <div className="text-right">
-          <div className="text-[9px] uppercase tracking-wide text-muted-foreground">Leverage</div>
-          <div className="font-mono text-sm font-semibold text-primary">{leverage}x</div>
+          <div className="text-[9px] uppercase tracking-wide text-muted-foreground">Est. Fee</div>
+          <div className="font-mono text-sm font-semibold">
+            {usd(feeOn(notionalOf(ps, leverage || 1)) * 2)}
+          </div>
           {book && (
             <div className="font-mono text-[10px] text-muted-foreground">
               {direction === "long" ? `Ask ${book.ask}` : `Bid ${book.bid}`}
@@ -240,44 +254,6 @@ export function OrderTicket({
             USD
           </span>
         </div>
-        <div className="mt-1.5 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setShowLeverage((v) => !v)}
-            className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground hover:text-foreground"
-          >
-            Leverage: <span className="text-foreground">{leverage}x</span>
-            <ChevronDown className={cn("h-3 w-3 transition-transform", showLeverage && "rotate-180")} />
-          </button>
-        </div>
-        {showLeverage && (
-          <div className="mt-2 grid gap-2 rounded-md border border-border bg-muted/20 p-2">
-            <Slider
-              min={1}
-              max={100}
-              step={1}
-              value={[leverage]}
-              onValueChange={(v) => setLeverage(v[0] ?? 1)}
-            />
-            <div className="flex flex-wrap gap-1">
-              {LEV_PRESETS.map((l) => (
-                <button
-                  key={l}
-                  type="button"
-                  onClick={() => setLeverage(l)}
-                  className={cn(
-                    "rounded-md border px-2 py-0.5 text-[10px] font-mono transition-colors",
-                    leverage === l
-                      ? "border-primary bg-primary/15 text-primary"
-                      : "border-border text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {l}x
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="h-px bg-border" />
@@ -289,8 +265,15 @@ export function OrderTicket({
         value={stopLoss}
         onChange={setStopLoss}
         pct={slPct}
+        usd={slLossUsd}
         invalid={!!slInvalid}
         invalidText={direction === "long" ? "Must be < entry" : "Must be > entry"}
+        picking={pickMode === "sl"}
+        onPick={
+          onRequestPick
+            ? () => onRequestPick(pickMode === "sl" ? null : "sl")
+            : undefined
+        }
       />
 
       {/* Take Profit */}
@@ -300,8 +283,15 @@ export function OrderTicket({
         value={takeProfit}
         onChange={setTakeProfit}
         pct={tpPct}
+        usd={tpGainUsd}
         invalid={!!tpInvalid}
         invalidText={direction === "long" ? "Must be > entry" : "Must be < entry"}
+        picking={pickMode === "tp"}
+        onPick={
+          onRequestPick
+            ? () => onRequestPick(pickMode === "tp" ? null : "tp")
+            : undefined
+        }
       />
 
       {isAdmin && (
@@ -434,16 +424,22 @@ function SLTPField({
   value,
   onChange,
   pct,
+  usd: usdDelta,
   invalid,
   invalidText,
+  picking,
+  onPick,
 }: {
   label: string;
   tone: "primary" | "destructive";
   value: string;
   onChange: (v: string) => void;
   pct: number | null;
+  usd: number | null;
   invalid: boolean;
   invalidText: string;
+  picking?: boolean;
+  onPick?: () => void;
 }) {
   const toneText = tone === "primary" ? "text-primary" : "text-destructive";
   const toneBorder = tone === "primary" ? "border-primary/30" : "border-destructive/30";
@@ -456,6 +452,21 @@ function SLTPField({
         <span className="text-[9px] uppercase tracking-wide text-muted-foreground">Optional</span>
       </div>
       <div className="flex items-center gap-2">
+        {onPick && (
+          <button
+            type="button"
+            onClick={onPick}
+            title="Click on chart to set price"
+            className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-md border transition-colors",
+              picking
+                ? "border-foreground bg-foreground text-background"
+                : "border-border bg-muted/30 text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Crosshair className="h-4 w-4" />
+          </button>
+        )}
         <div className="relative flex-1">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[10px] uppercase text-muted-foreground">
             USD
@@ -472,14 +483,26 @@ function SLTPField({
             )}
           />
         </div>
-        <div className={cn(
-          "min-w-[60px] rounded-md border px-2 py-1 text-center font-mono text-xs",
-          toneBorder,
-          toneText,
-        )}>
-          {pct != null ? `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%` : "—"}
+        <div
+          className={cn(
+            "min-w-[72px] rounded-md border px-2 py-1 text-center font-mono text-[11px] leading-tight",
+            toneBorder,
+            toneText,
+          )}
+        >
+          <div>{pct != null ? `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%` : "—"}</div>
+          {usdDelta != null && (
+            <div className="text-[9px] opacity-80">
+              {usdDelta >= 0 ? "+" : "-"}${Math.abs(usdDelta).toFixed(2)}
+            </div>
+          )}
         </div>
       </div>
+      {picking && (
+        <div className="mt-1 text-[10px] text-muted-foreground">
+          Click anywhere on the chart to set the {label.toLowerCase()} price.
+        </div>
+      )}
       {invalid && (
         <div className="mt-1 text-[10px] text-destructive">{invalidText}</div>
       )}
