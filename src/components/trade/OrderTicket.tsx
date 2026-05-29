@@ -163,9 +163,18 @@ export function OrderTicket({
 
   return (
     <form
-      onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (isGuest) {
+          toast.info("Sign up to open trades — demo workspace only.");
+          navigate({ to: "/signup" });
+          return;
+        }
+        mutation.mutate();
+      }}
       className="grid gap-4 text-sm"
     >
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
