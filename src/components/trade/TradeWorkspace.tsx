@@ -302,6 +302,9 @@ export function TradeWorkspace({ profile, isAdminView = false, isGuest = false }
                   setPickedPrice({ mode: pickMode, price, nonce: Date.now() });
                   setPickMode(null);
                 }}
+                onChangeSL={isGuest ? undefined : (p) => commitSLTP("sl", p)}
+                onChangeTP={isGuest ? undefined : (p) => commitSLTP("tp", p)}
+                onCloseTrade={isGuest || !activeSymbolTrade ? undefined : handleCloseActiveTrade}
               />
 
             </PanelFrame>
