@@ -25,7 +25,9 @@ import { cn } from "@/lib/utils";
 interface Props {
   profile: ProfileDTO;
   isAdminView?: boolean;
+  isGuest?: boolean;
 }
+
 
 type PanelKey = "watch" | "book" | "feed" | "ticket" | "chart" | "history";
 
