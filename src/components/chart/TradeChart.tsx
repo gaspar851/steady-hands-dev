@@ -296,6 +296,27 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
     return () => { chart.unsubscribeClick(handler); };
   }, [pickMode, onPickPrice, ready]);
 
+  // Track Y coordinate of SL/TP for in-chart USD labels
+  const [labelCoords, setLabelCoords] = useState<{ sl: number | null; tp: number | null }>({ sl: null, tp: null });
+  useEffect(() => {
+    if (!ready) return;
+    let raf = 0;
+    let stopped = false;
+    const tick = () => {
+      const s = candleRef.current;
+      if (s) {
+        const sl = overlay?.stopLoss != null ? s.priceToCoordinate(overlay.stopLoss) : null;
+        const tp = overlay?.takeProfit != null ? s.priceToCoordinate(overlay.takeProfit) : null;
+        setLabelCoords((prev) =>
+          prev.sl === sl && prev.tp === tp ? prev : { sl: sl ?? null, tp: tp ?? null },
+        );
+      }
+      if (!stopped) raf = window.setTimeout(tick, 150) as unknown as number;
+    };
+    tick();
+    return () => { stopped = true; clearTimeout(raf); };
+  }, [ready, overlay?.stopLoss, overlay?.takeProfit, overlay?.slUsd, overlay?.tpUsd]);
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
