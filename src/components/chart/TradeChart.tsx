@@ -313,8 +313,8 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
     return () => { chart.unsubscribeClick(handler); };
   }, [pickMode, onPickPrice, ready]);
 
-  // Track Y coordinate of SL/TP for in-chart USD labels
-  const [labelCoords, setLabelCoords] = useState<{ sl: number | null; tp: number | null }>({ sl: null, tp: null });
+  // Track Y coordinate of SL/TP/current price for in-chart labels
+  const [labelCoords, setLabelCoords] = useState<{ sl: number | null; tp: number | null; cur: number | null }>({ sl: null, tp: null, cur: null });
   useEffect(() => {
     if (!ready) return;
     let raf = 0;
@@ -324,15 +324,50 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
       if (s) {
         const sl = overlay?.stopLoss != null ? s.priceToCoordinate(overlay.stopLoss) : null;
         const tp = overlay?.takeProfit != null ? s.priceToCoordinate(overlay.takeProfit) : null;
+        const cur = overlay?.currentPrice != null ? s.priceToCoordinate(overlay.currentPrice) : null;
         setLabelCoords((prev) =>
-          prev.sl === sl && prev.tp === tp ? prev : { sl: sl ?? null, tp: tp ?? null },
+          prev.sl === sl && prev.tp === tp && prev.cur === cur ? prev : { sl: sl ?? null, tp: tp ?? null, cur: cur ?? null },
         );
       }
       if (!stopped) raf = window.setTimeout(tick, 150) as unknown as number;
     };
     tick();
     return () => { stopped = true; clearTimeout(raf); };
-  }, [ready, overlay?.stopLoss, overlay?.takeProfit, overlay?.slUsd, overlay?.tpUsd]);
+  }, [ready, overlay?.stopLoss, overlay?.takeProfit, overlay?.currentPrice, overlay?.slUsd, overlay?.tpUsd]);
+
+  // Drag state for SL/TP lines (HTML overlay → commit on pointerup)
+  const [drag, setDrag] = useState<{ mode: "sl" | "tp"; y: number; price: number } | null>(null);
+  function startDrag(mode: "sl" | "tp") {
+    return (e: React.PointerEvent<HTMLDivElement>) => {
+      const onChange = mode === "sl" ? onChangeSL : onChangeTP;
+      if (!onChange) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const container = containerRef.current;
+      const series = candleRef.current;
+      if (!container || !series) return;
+      const rect = container.getBoundingClientRect();
+      const move = (ev: PointerEvent) => {
+        const y = ev.clientY - rect.top;
+        const p = series.coordinateToPrice(y);
+        const price = typeof p === "number" ? p : Number(p);
+        if (!Number.isFinite(price)) return;
+        setDrag({ mode, y, price });
+      };
+      const up = (ev: PointerEvent) => {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+        const y = ev.clientY - rect.top;
+        const p = series.coordinateToPrice(y);
+        const price = typeof p === "number" ? p : Number(p);
+        setDrag(null);
+        if (Number.isFinite(price)) onChange(Number(price));
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+    };
+  }
+
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">
