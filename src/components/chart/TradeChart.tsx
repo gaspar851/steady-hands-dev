@@ -56,6 +56,9 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
   const barsRef = useRef<Bar[]>([]);
 
   const [interval, setInterval] = useState<Interval>("1h");
+  const [chartType, setChartType] = useState<"line" | "candle">(() => {
+    try { return (localStorage.getItem("trade:chartType") as any) || "line"; } catch { return "line"; }
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
