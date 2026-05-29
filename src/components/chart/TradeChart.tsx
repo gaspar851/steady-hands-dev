@@ -3,6 +3,7 @@ import {
   createChart,
   CandlestickSeries,
   LineSeries,
+  AreaSeries,
   HistogramSeries,
 
   type IChartApi,
@@ -125,8 +126,10 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
           wickUpColor: "#22c98a",
           wickDownColor: "#e85d6f",
         })
-      : chart.addSeries(LineSeries, {
-          color: "#5aa9ff",
+      : chart.addSeries(AreaSeries, {
+          lineColor: "#22c98a",
+          topColor: "rgba(34, 201, 138, 0.35)",
+          bottomColor: "rgba(34, 201, 138, 0.02)",
           lineWidth: 2,
           priceLineVisible: false,
         });
@@ -157,7 +160,15 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
           : (data as Bar[]).map((b) => ({ time: b.time, value: b.close }));
         candleRef.current.setData(seriesData);
         renderAll();
-        chartRef.current?.timeScale().fitContent();
+        const total = barsRef.current.length;
+        const ts = chartRef.current?.timeScale();
+        if (ts && total > 0) {
+          // Default view ~2x zoomed in vs. fitContent (show last ~40 bars)
+          const visible = Math.min(40, total);
+          ts.setVisibleLogicalRange({ from: total - visible, to: total + 5 });
+        } else {
+          ts?.fitContent();
+        }
       })
       .catch((e) => { if (!cancelled) setError(e.message || "Failed to load chart"); })
       .finally(() => { if (!cancelled) setLoading(false); });
