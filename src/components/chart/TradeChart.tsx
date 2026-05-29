@@ -18,6 +18,7 @@ import { IndicatorsMenu } from "./IndicatorsMenu";
 import { DrawingToolbar, type DrawTool } from "./DrawingToolbar";
 import { ChartDrawingLayer, type Drawing } from "./ChartDrawingLayer";
 import { sma, ema, bollinger, rsi, macd, type Bar } from "@/lib/indicators";
+import { cn } from "@/lib/utils";
 
 export interface ChartOverlay {
   entryPrice?: number | null;
@@ -33,6 +34,8 @@ interface Props {
   height?: number;
   maximized?: boolean;
   onToggleMaximize?: () => void;
+  pickMode?: "sl" | "tp" | null;
+  onPickPrice?: (price: number) => void;
 }
 
 const intervals: Interval[] = ["1m", "5m", "15m", "1h", "4h", "1d"];
@@ -42,7 +45,7 @@ interface ManagedSeries {
   series: ISeriesApi<any>[];
 }
 
-export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleMaximize }: Props) {
+export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleMaximize, pickMode, onPickPrice }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -263,6 +266,22 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
     add(overlay.exitPrice, "#f0c674", "EXIT", LineStyle.Dotted);
   }, [overlay?.entryPrice, overlay?.stopLoss, overlay?.takeProfit, overlay?.exitPrice]);
 
+  // Chart click → pick price for SL/TP
+  useEffect(() => {
+    const chart = chartRef.current;
+    const series = candleRef.current;
+    if (!chart || !series || !pickMode || !onPickPrice) return;
+    const handler = (param: any) => {
+      const y = param?.point?.y;
+      if (y == null) return;
+      const price = series.coordinateToPrice(y);
+      if (price == null) return;
+      onPickPrice(typeof price === "number" ? price : Number(price));
+    };
+    chart.subscribeClick(handler);
+    return () => { chart.unsubscribeClick(handler); };
+  }, [pickMode, onPickPrice, ready]);
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -333,8 +352,13 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
           canUndo={canUndo}
           canRedo={canRedo}
         />
-        <div className="group relative flex-1 min-h-0">
-          <div ref={containerRef} style={maximized ? undefined : { height }} className="h-full w-full rounded-md border border-border bg-card/40" />
+        <div className={cn("group relative flex-1 min-h-0", pickMode && "cursor-crosshair")}>
+          <div ref={containerRef} style={maximized ? undefined : { height }} className={cn("h-full w-full rounded-md border bg-card/40", pickMode ? "border-foreground/60 ring-1 ring-foreground/30" : "border-border")} />
+          {pickMode && (
+            <div className="pointer-events-none absolute left-1/2 top-2 z-30 -translate-x-1/2 rounded-full border border-foreground/40 bg-background/80 px-3 py-1 text-[10px] uppercase tracking-wider text-foreground backdrop-blur-sm">
+              Click chart to set {pickMode === "sl" ? "Stop Loss" : "Take Profit"}
+            </div>
+          )}
           <ChartDrawingLayer
             chart={ready ? chartRef.current : null}
             series={ready ? candleRef.current : null}

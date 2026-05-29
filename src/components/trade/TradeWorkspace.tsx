@@ -62,6 +62,8 @@ export function TradeWorkspace({ profile, isAdminView = false }: Props) {
   const [symbol, setSymbol] = useState("BTCUSDT");
   const [editing, setEditing] = useState<TradeDTO | null>(null);
   const [priceHint, setPriceHint] = useState<number | null>(null);
+  const [pickMode, setPickMode] = useState<"sl" | "tp" | null>(null);
+  const [pickedPrice, setPickedPrice] = useState<{ mode: "sl" | "tp"; price: number; nonce: number } | null>(null);
 
   const initial: PanelState = { visible: true, minimized: false, maximized: false };
   const [panels, setPanels] = useState<Record<PanelKey, PanelState>>({
@@ -164,7 +166,7 @@ export function TradeWorkspace({ profile, isAdminView = false }: Props) {
           <SymbolBar symbol={symbol} />
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Stat label="Trader" value={profile.full_name || profile.email} mono={false} />
+          {/* Trader name shown in top-right user menu; removed here to avoid duplication */}
           <Stat label={t("trade.balance")} value={usd(balance)} />
           <Stat label="Equity" value={usd(equity)} tone={unrealizedPnl >= 0 ? "pos" : "neg"} />
           <Stat label="Open Trades" value={usd(unrealizedPnl)} tone={unrealizedPnl >= 0 ? "pos" : "neg"} />
@@ -229,6 +231,12 @@ export function TradeWorkspace({ profile, isAdminView = false }: Props) {
                 overlay={overlay}
                 height={undefined as any}
                 maximized
+                pickMode={pickMode}
+                onPickPrice={(price) => {
+                  if (!pickMode) return;
+                  setPickedPrice({ mode: pickMode, price, nonce: Date.now() });
+                  setPickMode(null);
+                }}
               />
 
             </PanelFrame>
@@ -321,6 +329,9 @@ export function TradeWorkspace({ profile, isAdminView = false }: Props) {
               priceHint={priceHint}
               balance={equity}
               available={balance}
+              pickMode={pickMode}
+              onRequestPick={setPickMode}
+              pickedPrice={pickedPrice}
             />
           </PanelFrame>
         )}
