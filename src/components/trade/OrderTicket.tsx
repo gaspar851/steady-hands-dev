@@ -24,6 +24,7 @@ interface Props {
   pickMode?: "sl" | "tp" | null;
   onRequestPick?: (mode: "sl" | "tp" | null) => void;
   pickedPrice?: { mode: "sl" | "tp"; price: number; nonce: number } | null;
+  onDraftChange?: (draft: { entry: number | null; sl: number | null; tp: number | null; direction: "long" | "short" }) => void;
 }
 
 type OrderType = "market" | "limit";
@@ -39,6 +40,7 @@ export function OrderTicket({
   pickMode,
   onRequestPick,
   pickedPrice,
+  onDraftChange,
 }: Props) {
   const { t } = useTranslation();
   const qc = useQueryClient();
@@ -109,6 +111,11 @@ export function OrderTicket({
 
   const slInvalid = ep && sl ? (direction === "long" ? sl >= ep : sl <= ep) : false;
   const tpInvalid = ep && tp ? (direction === "long" ? tp <= ep : tp >= ep) : false;
+
+  // Push current draft up so the chart can show live SL/TP/entry lines
+  useEffect(() => {
+    onDraftChange?.({ entry: ep || null, sl, tp, direction });
+  }, [ep, sl, tp, direction, onDraftChange]);
 
   const mutation = useMutation({
     mutationFn: async () => {

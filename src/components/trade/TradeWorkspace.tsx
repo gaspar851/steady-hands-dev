@@ -64,6 +64,7 @@ export function TradeWorkspace({ profile, isAdminView = false }: Props) {
   const [priceHint, setPriceHint] = useState<number | null>(null);
   const [pickMode, setPickMode] = useState<"sl" | "tp" | null>(null);
   const [pickedPrice, setPickedPrice] = useState<{ mode: "sl" | "tp"; price: number; nonce: number } | null>(null);
+  const [draft, setDraft] = useState<{ entry: number | null; sl: number | null; tp: number | null; direction: "long" | "short" }>({ entry: null, sl: null, tp: null, direction: "long" });
 
   const initial: PanelState = { visible: true, minimized: false, maximized: false };
   const [panels, setPanels] = useState<Record<PanelKey, PanelState>>({
@@ -131,18 +132,29 @@ export function TradeWorkspace({ profile, isAdminView = false }: Props) {
 
   const activeSymbolTrade = openTrades.find((t) => t.symbol === symbol);
   const overlay = useMemo(() => {
-    if (!activeSymbolTrade) return undefined;
+    const liveEntry = activeSymbolTrade ? Number(activeSymbolTrade.entry_price) : null;
+    const liveSL = activeSymbolTrade?.stop_loss != null ? Number(activeSymbolTrade.stop_loss) : null;
+    const liveTP = activeSymbolTrade?.take_profit != null ? Number(activeSymbolTrade.take_profit) : null;
+    // Draft (form values) takes precedence so SL/TP appear as you type/pick
+    const entryPrice = draft.entry ?? liveEntry;
+    const stopLoss = draft.sl ?? liveSL;
+    const takeProfit = draft.tp ?? liveTP;
+    if (entryPrice == null && stopLoss == null && takeProfit == null) return undefined;
     return {
-      entryPrice: Number(activeSymbolTrade.entry_price),
-      stopLoss: activeSymbolTrade.stop_loss != null ? Number(activeSymbolTrade.stop_loss) : null,
-      takeProfit: activeSymbolTrade.take_profit != null ? Number(activeSymbolTrade.take_profit) : null,
-      direction: activeSymbolTrade.direction,
+      entryPrice,
+      stopLoss,
+      takeProfit,
+      direction: activeSymbolTrade?.direction ?? draft.direction,
     };
   }, [
     activeSymbolTrade?.entry_price,
     activeSymbolTrade?.stop_loss,
     activeSymbolTrade?.take_profit,
     activeSymbolTrade?.direction,
+    draft.entry,
+    draft.sl,
+    draft.tp,
+    draft.direction,
   ]);
 
   const watchEffW = panels.watch.visible ? (panels.watch.minimized ? 28 : watchW) : 0;
@@ -332,6 +344,7 @@ export function TradeWorkspace({ profile, isAdminView = false }: Props) {
               pickMode={pickMode}
               onRequestPick={setPickMode}
               pickedPrice={pickedPrice}
+              onDraftChange={setDraft}
             />
           </PanelFrame>
         )}
