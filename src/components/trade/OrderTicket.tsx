@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { TrendingUp, TrendingDown, Crosshair } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { TrendingUp, TrendingDown, Crosshair, Lock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { getBookTicker } from "@/lib/binance";
@@ -12,12 +13,14 @@ import { feeOn, notionalOf } from "@/lib/costs";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
+
 interface Props {
   targetUserId?: string;
   symbol: string;
   onSymbolChange: (s: string) => void;
   defaultLeverage?: number;
   isAdmin?: boolean;
+  isGuest?: boolean;
   priceHint?: number | null;
   balance?: number;
   available?: number;
@@ -34,6 +37,7 @@ export function OrderTicket({
   symbol,
   defaultLeverage = 10,
   isAdmin = false,
+  isGuest = false,
   priceHint,
   balance,
   available,
@@ -45,6 +49,8 @@ export function OrderTicket({
   const { t } = useTranslation();
   const qc = useQueryClient();
   const create = useServerFn(createTrade);
+  const navigate = useNavigate();
+
 
   const [direction, setDirection] = useState<"long" | "short">("long");
   const [orderType, setOrderType] = useState<OrderType>("market");
