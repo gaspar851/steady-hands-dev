@@ -102,6 +102,10 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
   const { indicators, toggle, update } = useChartIndicators();
   const active = useMemo(() => indicators.filter((i) => i.enabled), [indicators]);
 
+  // Entry guide line should only show while picking SL/TP
+  const showEntryGuide = pickMode === "sl" || pickMode === "tp";
+  const guideEntryPrice = showEntryGuide ? (overlay?.currentPrice ?? overlay?.entryPrice ?? null) : null;
+
   // create chart once
   useEffect(() => {
     if (!containerRef.current) return;
@@ -170,7 +174,6 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
         const total = barsRef.current.length;
         const ts = chartRef.current?.timeScale();
         if (ts && total > 0) {
-          // Default view ~2x zoomed in vs. fitContent (show last ~40 bars)
           const visible = Math.min(40, total);
           ts.setVisibleLogicalRange({ from: total - visible, to: total + 5 });
         } else {
@@ -205,7 +208,6 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
     const bars = barsRef.current;
     if (!chart || !bars.length) return;
 
-    // determine pane assignments: pane 0 = price; rsi/macd each their own pane
     const paneIdx = new Map<string, number>();
     let nextPane = 1;
     for (const ind of active) {
@@ -213,7 +215,6 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
       else if (ind.kind === "macd") { paneIdx.set(ind.id, nextPane++); }
     }
 
-    // remove stale
     const wanted = new Set(active.map((i) => i.id));
     for (const id of Array.from(indSeriesRef.current.keys())) {
       if (!wanted.has(id)) destroySeries(id);
@@ -279,12 +280,13 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
     }
   }
 
-  // overlay price lines for entry/SL/TP/exit
+  // overlay price lines for SL/TP/exit (ENTRY removed from chart line; handled as guide overlay only)
   useEffect(() => {
     if (!candleRef.current) return;
     linesRef.current.forEach((l) => candleRef.current!.removePriceLine(l));
     linesRef.current = [];
     if (!overlay) return;
+
     const add = (price: number | null | undefined, color: string, title: string, style: LineStyle = LineStyle.Solid) => {
       if (price == null) return;
       const line = candleRef.current!.createPriceLine({
@@ -292,11 +294,11 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
       });
       linesRef.current.push(line);
     };
-    add(overlay.entryPrice, "#9aa3b2", "ENTRY");
+
     add(overlay.stopLoss, "#e85d6f", "SL", LineStyle.Dashed);
     add(overlay.takeProfit, "#22c98a", "TP", LineStyle.Dashed);
     add(overlay.exitPrice, "#f0c674", "EXIT", LineStyle.Dotted);
-  }, [overlay?.entryPrice, overlay?.stopLoss, overlay?.takeProfit, overlay?.exitPrice]);
+  }, [overlay?.stopLoss, overlay?.takeProfit, overlay?.exitPrice]);
 
   // Chart click → pick price for SL/TP
   useEffect(() => {
@@ -314,30 +316,43 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
     return () => { chart.unsubscribeClick(handler); };
   }, [pickMode, onPickPrice, ready]);
 
-  // Track Y coordinate of Entry/SL/TP/current price for in-chart labels
-  const [labelCoords, setLabelCoords] = useState<{ entry: number | null; sl: number | null; tp: number | null; cur: number | null }>({ entry: null, sl: null, tp: null, cur: null });
+  // Track Y coordinates (smooth update loop; fixes lag)
+  const [labelCoords, setLabelCoords] = useState<{ entry: number | null; sl: number | null; tp: number | null; cur: number | null }>({
+    entry: null,
+    sl: null,
+    tp: null,
+    cur: null,
+  });
+
   useEffect(() => {
     if (!ready) return;
     let raf = 0;
     let stopped = false;
+
     const tick = () => {
       const s = candleRef.current;
       if (s) {
-        const entry = overlay?.entryPrice != null ? s.priceToCoordinate(overlay.entryPrice) : null;
+        const entry = guideEntryPrice != null ? s.priceToCoordinate(guideEntryPrice) : null;
         const sl = overlay?.stopLoss != null ? s.priceToCoordinate(overlay.stopLoss) : null;
         const tp = overlay?.takeProfit != null ? s.priceToCoordinate(overlay.takeProfit) : null;
         const cur = overlay?.currentPrice != null ? s.priceToCoordinate(overlay.currentPrice) : null;
+
         setLabelCoords((prev) =>
           prev.entry === entry && prev.sl === sl && prev.tp === tp && prev.cur === cur
             ? prev
             : { entry: entry ?? null, sl: sl ?? null, tp: tp ?? null, cur: cur ?? null },
         );
       }
-      if (!stopped) raf = window.setTimeout(tick, 150) as unknown as number;
+
+      if (!stopped) raf = requestAnimationFrame(tick);
     };
-    tick();
-    return () => { stopped = true; clearTimeout(raf); };
-  }, [ready, overlay?.entryPrice, overlay?.stopLoss, overlay?.takeProfit, overlay?.currentPrice, overlay?.slUsd, overlay?.tpUsd]);
+
+    raf = requestAnimationFrame(tick);
+    return () => {
+      stopped = true;
+      cancelAnimationFrame(raf);
+    };
+  }, [ready, guideEntryPrice, overlay?.stopLoss, overlay?.takeProfit, overlay?.currentPrice]);
 
   // Drag state for Entry / SL / TP lines (HTML overlay → commit on pointerup)
   const [drag, setDrag] = useState<{
@@ -387,7 +402,6 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
     };
   }
 
-
   return (
     <div className="flex h-full min-h-0 flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -433,7 +447,7 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
           )}
         </div>
       </div>
-      {/* legend chips */}
+
       {active.length > 0 && (
         <div className="flex flex-wrap items-center gap-1 text-[10px]">
           {active.map((ind) => (
@@ -461,6 +475,7 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
           <span className="ml-1 text-[9px] uppercase tracking-wider text-muted-foreground/60">drag pane edges to resize</span>
         </div>
       )}
+
       <div className="flex w-full flex-1 min-h-0 gap-2">
         <DrawingToolbar
           tool={tool}
@@ -471,25 +486,27 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
           canUndo={canUndo}
           canRedo={canRedo}
         />
+
         <div className={cn("group relative flex-1 min-h-0", pickMode && "cursor-crosshair")}>
           <div ref={containerRef} style={maximized ? undefined : { height }} className={cn("h-full w-full rounded-md border bg-card/40", pickMode ? "border-foreground/60 ring-1 ring-foreground/30" : "border-border")} />
+
           {pickMode && (
             <div className="pointer-events-none absolute left-1/2 top-2 z-30 -translate-x-1/2 rounded-full border border-foreground/40 bg-background/80 px-3 py-1 text-[10px] uppercase tracking-wider text-foreground backdrop-blur-sm">
               Click chart to set {pickMode === "sl" ? "Stop Loss" : "Take Profit"}
             </div>
           )}
-          {/* Entry line + draggable label */}
+
+          {/* Entry guide line + label (only visible while picking SL/TP) */}
           {(() => {
+            if (!showEntryGuide) return null;
             const isDragEntry = drag?.mode === "entry";
             const yRaw = isDragEntry ? drag!.y : labelCoords.entry;
             if (yRaw == null) return null;
-            const price = isDragEntry ? drag!.price : overlay?.entryPrice;
+            const price = isDragEntry ? drag!.price : guideEntryPrice;
             const interactive = !!onChangeEntry;
             return (
               <>
-                {isDragEntry && (
-                  <div className="pointer-events-none absolute left-0 right-0 z-10 border-t border-dashed border-muted-foreground/70" style={{ top: yRaw }} />
-                )}
+                <div className="pointer-events-none absolute left-0 right-0 z-10 border-t border-dashed border-muted-foreground/70" style={{ top: yRaw }} />
                 <div
                   onPointerDown={interactive ? startDrag("entry") : undefined}
                   className={cn(
@@ -504,6 +521,7 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
               </>
             );
           })()}
+
           {/* SL line + draggable label (shows expected loss, not price) */}
           {(() => {
             const isDragSL = drag?.mode === "sl";
@@ -540,6 +558,7 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
               </>
             );
           })()}
+
           {/* TP line + draggable label (shows expected gain, not price) */}
           {(() => {
             const isDragTP = drag?.mode === "tp";
@@ -576,6 +595,7 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
               </>
             );
           })()}
+
           {/* Current price label with live P/L + close button */}
           {labelCoords.cur != null && overlay?.tradeId && (
             <div
@@ -600,6 +620,7 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
               )}
             </div>
           )}
+
           <ChartDrawingLayer
             chart={ready ? chartRef.current : null}
             series={ready ? candleRef.current : null}
@@ -608,6 +629,7 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
             onChange={setDrawings}
             onApplied={() => setTool("cursor")}
           />
+
           <button
             type="button"
             onClick={() => {
@@ -631,8 +653,6 @@ export function TradeChart({ symbol, overlay, height = 420, maximized, onToggleM
           </button>
         </div>
       </div>
-
-
     </div>
   );
 }
