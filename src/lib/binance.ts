@@ -1,4 +1,5 @@
-// Binance public REST — no auth required, CORS enabled.
+// Binance public REST — with CORS Proxy
+const CORS_PROXY = "https://corsproxy.io/?";
 
 export type Interval = "1m" | "5m" | "15m" | "1h" | "4h" | "1d";
 
@@ -21,6 +22,7 @@ let symbolsCache: SymbolInfo[] | null = null;
 
 export async function getSymbols(): Promise<SymbolInfo[]> {
   if (symbolsCache) return symbolsCache;
+
   try {
     const cached = localStorage.getItem("binance:symbols:v1");
     if (cached) {
@@ -31,7 +33,10 @@ export async function getSymbols(): Promise<SymbolInfo[]> {
       }
     }
   } catch {}
-  const res = await fetch("https://api.binance.com/api/v3/exchangeInfo");
+
+  const url = "https://api.binance.com/api/v3/exchangeInfo";
+  const res = await fetch(CORS_PROXY + encodeURIComponent(url));
+  
   const json = await res.json();
   const list: SymbolInfo[] = (json.symbols || [])
     .filter((s: any) => s.status === "TRADING" && s.isSpotTradingAllowed)
@@ -40,6 +45,7 @@ export async function getSymbols(): Promise<SymbolInfo[]> {
       baseAsset: s.baseAsset,
       quoteAsset: s.quoteAsset,
     }));
+
   symbolsCache = list;
   try {
     localStorage.setItem(
@@ -55,9 +61,11 @@ export async function getKlines(
   interval: Interval = "1h",
   limit = 500
 ): Promise<Kline[]> {
-  const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
-  const res = await fetch(url);
+  const baseUrl = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
+  const res = await fetch(CORS_PROXY + encodeURIComponent(baseUrl));
+  
   if (!res.ok) throw new Error(`klines ${symbol} ${res.status}`);
+  
   const raw: any[] = await res.json();
   return raw.map((r) => ({
     time: Math.floor(r[0] / 1000),
@@ -70,9 +78,8 @@ export async function getKlines(
 }
 
 export async function getPrice(symbol: string): Promise<number> {
-  const res = await fetch(
-    `https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`
-  );
+  const baseUrl = `https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`;
+  const res = await fetch(CORS_PROXY + encodeURIComponent(baseUrl));
   const json = await res.json();
   return +json.price;
 }
@@ -85,12 +92,12 @@ export interface BookTicker {
   spreadPct: number;
 }
 
-/** Best bid/ask from Binance — used for spread-aware market fills. */
 export async function getBookTicker(symbol: string): Promise<BookTicker> {
-  const res = await fetch(
-    `https://api.binance.com/api/v3/ticker/bookTicker?symbol=${symbol}`
-  );
+  const baseUrl = `https://api.binance.com/api/v3/ticker/bookTicker?symbol=${symbol}`;
+  const res = await fetch(CORS_PROXY + encodeURIComponent(baseUrl));
+  
   if (!res.ok) throw new Error(`bookTicker ${symbol} ${res.status}`);
+  
   const json = await res.json();
   const bid = +json.bidPrice;
   const ask = +json.askPrice;
@@ -99,4 +106,3 @@ export async function getBookTicker(symbol: string): Promise<BookTicker> {
   const spreadPct = mid > 0 ? (spread / mid) * 100 : 0;
   return { bid, ask, mid, spread, spreadPct };
 }
-
