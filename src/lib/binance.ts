@@ -1,3 +1,4 @@
+// CORS Proxy Fixed - May 30 2026
 // Binance public REST — with CORS Proxy
 const CORS_PROXY = "https://corsproxy.io/?";
 
